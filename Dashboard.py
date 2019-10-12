@@ -11,11 +11,30 @@ import dash_daq as daq
 
 import pandas as pd
 
+#from ControllerLibrary import Port
+import ControllerLibrary
+import FrontendLibrary
+from flask_caching import Cache
+#import redis
+
 APP_PATH = str(pathlib.Path(__file__).parent.resolve())
 df = pd.read_csv(os.path.join(APP_PATH, os.path.join("data", "spc_data.csv")))
 
 params = list(df)
 max_length = len(df)
+subsystems = ['Temperature Controller', 'High Side Pressure Controller', 'Calcium Reactor Controller', 'O3 Reactor Controller', 'Light Controller']
+
+#ports = ['Digital Output', 'Digital Input', 'Analog Output', 'Analog Input', 'I2C Port', 'TTL Serial Port', 'RS-485 Port']
+#configured_ports = [{'name': 'Heater_1_SSR_Port', 'type': 'DO', 'signal0_pin': 'GPIO0', 'signal1_pin': None, 'power_pin': '5V'}, {'name': 'Heater_2_SSR_Port', 'type': 'DO', 'signal0_pin': 'GPIO1', 'signal1_pin': None, 'power_pin': '5V'}]
+configured_ports = [ControllerLibrary.Port(name='Heater_1_SSR_Port', port_type='DO', signal0_pin='GPIO0'),
+                    ControllerLibrary.Port(name='Heater_2_SSR_Port', port_type='DO', signal0_pin='GPIO1'),
+                    ControllerLibrary.Port(name='Return_Pump_Serial_Port', port_type='TTL_Serial', signal0_pin='GPIO2', signal1_pin='GPIO3')]
+
+configured_devices = [ControllerLibrary.Device(name='Heater_1_SSR', port_type='DO', signal0_pin='GPIO0'),
+                      ControllerLibrary.Device(name='Heater_2_SSR', port_type='DO', signal0_pin='GPIO1'),
+                      ControllerLibrary.Device(name='Return_Pump_VFD', port_type='TTL_Serial', signal0_pin='GPIO2', signal1_pin='GPIO3')]
+
+#pins = ['GPIO0', 'GPIO1', 'DGND']
 
 suffix_row = "_row"
 suffix_button_id = "_button"
@@ -38,13 +57,25 @@ ud_lcl_input = daq.NumericInput(
     id="ud_lcl_input", className="setting-input", size=200, max=9999999
 )
 
+ud_portname_input = dcc.Input(
+    id="ud_portname_input", className="setting-input", size=200, max=9999999
+)
+ud_porttype_input = dcc.Input(
+    id="ud_porttype_input", className="setting-input", size=200, max=9999999
+)
+
+
 def InitializeFrontend():
     app = dash.Dash(
         __name__,
         meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
     )
-    server = app.server
+    #server = app.server
     app.config["suppress_callback_exceptions"] = True
+
+    cache = Cache()
+    cache.init_app(app.server, config=FrontendLibrary.CACHE_CONFIG)
+
     SetAppLayout(app)
 
     @app.callback(
@@ -54,6 +85,9 @@ def InitializeFrontend():
     )
     def render_tab_content(tab_switch, stopped_interval):
         if tab_switch == "tab1":
+            #return build_hardware_config_tab(), stopped_interval
+            return build_hardware_config_tab(), stopped_interval
+        if tab_switch == "tab2":
             return build_tab_1(), stopped_interval
         return (
             html.Div(
@@ -68,6 +102,8 @@ def InitializeFrontend():
             ),
             stopped_interval,
         )
+
+
 
     @app.callback(
         output=Output("progress-gauge", "value"),
@@ -96,9 +132,15 @@ def InitializeFrontend():
     def build_value_setter_panel(dd_select, state_value):
         return (
             [
+                build_value_setter_toggle(
+                    "value-setter-panel-toggle",
+                    "Toggle",
+                    state_dict[dd_select]["lcl"],
+                    ud_lcl_input,
+                ),
                 build_value_setter_line(
                     "value-setter-panel-header",
-                    "Specs",
+                    "Parameter",
                     "Historical Value",
                     "Set new value",
                 ),
@@ -133,6 +175,119 @@ def InitializeFrontend():
             state_value[dd_select]["lcl"],
         )
 
+    @app.callback(
+        output=[
+            Output("port-setter-panel", "children"),
+            #Output("ud_portname_input", "value"),
+            #Output("ud_porttype_input", "value"),
+            #Output("ud_lsl_input", "value"),
+            #Output("ud_ucl_input", "value"),
+            #Output("ud_lcl_input", "value"),
+        ],
+        inputs=[Input("port-select-dropdown", "value")],
+        state=[State("hardware-config-store", "data")],
+    )
+    def build_port_setter_panel(port_name, hardware_config):#, state_value):
+        #port_list = [port if port.name == port_name else None for port in configured_ports]
+        # for port in configured_ports:
+        #     if port.name == port_name:
+        #         break
+        port = FrontendLibrary.lookup_port_by_name(port_name=port_name, configured_ports=configured_ports)
+        return (
+            [
+                # build_value_setter_toggle(
+                #     "value-setter-panel-toggle",
+                #     "Toggle",
+                #     state_dict[dd_select]["lcl"],
+                #     ud_lcl_input,
+                # ),
+                build_value_setter_line(
+                    "value-setter-panel-header",
+                    "Parameter",
+                    "Historical Value",
+                    "Set new value",
+                ),
+            ]
+            + [build_port_config_line('port_line', port, key) for key in sorted(list(port.__dict__.keys()))],
+        )
+
+    @app.callback(
+        output=[
+            Output("device-config-panel", "children"),
+            # Output("ud_portname_input", "value"),
+            # Output("ud_porttype_input", "value"),
+            # Output("ud_lsl_input", "value"),
+            # Output("ud_ucl_input", "value"),
+            # Output("ud_lcl_input", "value"),
+        ],
+        inputs=[Input("device-select-dropdown", "value")],
+        state=[State("value-setter-store", "data")],
+    )
+    def build_device_config_panel(device_name, state_value):
+        # port_list = [port if port.name == port_name else None for port in configured_ports]
+        # for port in configured_ports:
+        #     if port.name == port_name:
+        #         break
+        device_panel_header = build_value_setter_line(
+                        "device-config-panel-header",
+                        "Attribute",
+                        "Historical Value",
+                        "Set new value",
+        )
+        attribute_addition_line = build_device_config_attribute_addition_line("add-device-attribute-line")
+
+        #port = FrontendLibrary.lookup_port_by_name(port_name=port_name, configured_ports=configured_ports)
+        port = ControllerLibrary.Port()
+        device_config_panel = [device_panel_header, attribute_addition_line]
+        if device_name == "new_device":
+            device_type_selection_line = build_device_config_line('new-device-type-selection-line', device_name, "device_type",
+                                                                  input_object_id="new-device-type-selection-dropdown")
+            common_device_attributes = [build_device_config_line('device_config_line', device_name, key) for key in
+                                        sorted(list(ControllerLibrary.HAL.COMMON_DEVICE_ATTRIBUTES.keys()))]
+            return [
+                #device_config_panel + common_device_attributes
+                [device_panel_header, device_type_selection_line]
+                # [
+                #     # build_value_setter_toggle(
+                #     #     "value-setter-panel-toggle",
+                #     #     "Toggle",
+                #     #     state_dict[dd_select]["lcl"],
+                #     #     ud_lcl_input,
+                #     # ),
+                #     device_panel_header,
+                #     attribute_addition_line,
+                #     # build_value_setter_line(
+                #     #     "value-setter-panel-header",
+                #     #     "Parameter",
+                #     #     "Historical Value",
+                #     #     "Set new value",
+                #     # ),
+                # ]
+                + [build_port_config_line('device-config-line', port, key) for key in sorted(list(port.__dict__.keys()))]
+                + [attribute_addition_line]
+            ]
+        else:
+            return (
+                device_config_panel
+                # [
+                #     # build_value_setter_toggle(
+                #     #     "value-setter-panel-toggle",
+                #     #     "Toggle",
+                #     #     state_dict[dd_select]["lcl"],
+                #     #     ud_lcl_input,
+                #     # ),
+                #     device_panel_header,
+                #     attribute_addition_line
+                #     # build_value_setter_line(
+                #     #     "value-setter-panel-header",
+                #     #     "Parameter",
+                #     #     "Historical Value",
+                #     #     "Set new value",
+                #     # ),
+                # ]
+                + [build_port_config_line('port_line', port, key) for key in sorted(list(port.__dict__.keys()))],
+            )
+
     # ====== Callbacks to update stored data via click =====
     @app.callback(
         output=Output("value-setter-store", "data"),
@@ -159,6 +314,53 @@ def InitializeFrontend():
             data[param]["ooc"] = populate_ooc(df[param], ucl, lcl)
             return data
 
+    # @app.callback(
+    #     #output=Output("port-setter-store", 'configuration'),
+    #     output=Output("metric-select-dropdown", "value"),
+    #     inputs=[Input("update-port-btn", "n_clicks")],
+    #     state=[
+    #         State("metric-select-dropdown", "value"),
+    #         State("value-setter-store", "data"),
+    #         State("ud_usl_input", "value"),
+    #         State("ud_lsl_input", "value"),
+    #         State("ud_ucl_input", "value"),
+    #         State("ud_lcl_input", "value"),
+    #     ]
+    #             #Input("load_hardware_config-btn", 'n-clicks'),
+    #             #Input("add-port-btn", 'n-clicks'),
+    #             #Input("port-select-dropdown", 'value'),
+    #             #Input("port-setter-panel", 'children')],
+    # )
+    # def update_port(clicks, port_name=None, port_setter_panel=None):
+    #     port = FrontendLibrary.lookup_port_by_name(port_name=port_name, configured_ports=configured_ports)
+    #
+    #     return 1
+
+    # @app.callback(
+    #     output=Output("port-setter-store", "data"),
+    #     inputs=[Input("value-setter-set-btn", "n_clicks")],
+    #     state=[
+    #         State("metric-select-dropdown", "value"),
+    #         State("value-setter-store", "data"),
+    #         State("ud_usl_input", "value"),
+    #         State("ud_lsl_input", "value"),
+    #         State("ud_ucl_input", "value"),
+    #         State("ud_lcl_input", "value"),
+    #     ],
+    # )
+    # def set_value_setter_store(set_btn, param, data, usl, lsl, ucl, lcl):
+    #     if set_btn is None:
+    #         return data
+    #     else:
+    #         data[param]["usl"] = usl
+    #         data[param]["lsl"] = lsl
+    #         data[param]["ucl"] = ucl
+    #         data[param]["lcl"] = lcl
+    #
+    #         # Recalculate ooc in case of param updates
+    #         data[param]["ooc"] = populate_ooc(df[param], ucl, lcl)
+    #         return data
+
     @app.callback(
         output=Output("value-setter-view-output", "children"),
         inputs=[
@@ -168,6 +370,60 @@ def InitializeFrontend():
         ],
     )
     def show_current_specs(n_clicks, dd_select, store_data):
+        if n_clicks > 0:
+            curr_col_data = store_data[dd_select]
+            new_df_dict = {
+                "Specs": [
+                    "Upper Specification Limit",
+                    "Lower Specification Limit",
+                    "Upper Control Limit",
+                    "Lower Control Limit",
+                ],
+                "Current Setup": [
+                    curr_col_data["usl"],
+                    curr_col_data["lsl"],
+                    curr_col_data["ucl"],
+                    curr_col_data["lcl"],
+                ],
+            }
+            new_df = pd.DataFrame.from_dict(new_df_dict)
+            return dash_table.DataTable(
+                style_header={"fontWeight": "bold", "color": "inherit"},
+                style_as_list_view=True,
+                fill_width=True,
+                style_cell_conditional=[
+                    {"if": {"column_id": "Specs"}, "textAlign": "left"}
+                ],
+                style_cell={
+                    "backgroundColor": "#1e2130",
+                    "fontFamily": "Open Sans",
+                    "padding": "0 2rem",
+                    "color": "darkgray",
+                    "border": "none",
+                },
+                css=[
+                    {"selector": "tr:hover td", "rule": "color: #91dfd2 !important;"},
+                    {"selector": "td", "rule": "border: none !important;"},
+                    {
+                        "selector": ".dash-cell.focused",
+                        "rule": "background-color: #1e2130 !important;",
+                    },
+                    {"selector": "table", "rule": "--accent: #1e2130;"},
+                    {"selector": "tr", "rule": "background-color: transparent"},
+                ],
+                data=new_df.to_dict("rows"),
+                columns=[{"id": c, "name": c} for c in ["Specs", "Current Setup"]],
+            )
+
+    @app.callback(
+        output=Output("port-setter-view-output", "children"),
+        inputs=[
+            Input("port-setter-view-btn", "n_clicks"),
+            Input("port-select-dropdown", "value"),
+            Input("port-setter-store", "data"),
+        ],
+    )
+    def show_current_hardware_config(n_clicks, dd_select, store_data):
         if n_clicks > 0:
             curr_col_data = store_data[dd_select]
             new_df_dict = {
@@ -366,7 +622,54 @@ def InitializeFrontend():
         }
         return new_figure
 
-    return app#, server
+    @app.callback(
+        dash.dependencies.Output('subsystem-on-off-output', 'children'),
+        [dash.dependencies.Input('subsystem-on-off', 'value')])
+    def update_output(value):
+        return 'The switch is {}.'.format(value)
+
+    # @app.callback(
+    #     inputs=[Input("update-port-btn", "n_clicks")],
+    #     output=Output("hardware_config_button_clicks", "children"),
+    #     state=[State("hardware_config_button_clicks", "children")]
+    # )
+    # def update_hardware_config_button_clicks(update_port_button_num_clicks, prev_clicks):
+    #     #return
+    #     if update_port_button_num_clicks != None:
+    #
+    #     pass
+
+    @app.callback(
+        output=Output("hardware-config-store", "data"),
+        inputs=[Input("update-port-btn", "n_clicks")],
+        state=[State("port-select-dropdown", "value"),
+               State("port-setter-panel", "children"),
+               State("hardware-config-store", "data")]
+    )
+    def update_port(button_clicks, port_name, port_setter_panel_items, current_hardware_config):
+        if button_clicks != None and port_name != None:
+            port = FrontendLibrary.lookup_port_by_name(port_name=port_name, configured_ports=configured_ports)
+            port = ControllerLibrary.Port()
+            for item in port_setter_panel_items:
+                if item['props']['id'] == 'port_line':
+                    data_line = item['props']['children']
+                    data_label = data_line[0]['props']['children']
+                    data_value = data_line[1]['props']['children']['props']['value']
+                    if data_value != None:
+                        setattr(port,data_label,data_value)
+                        #port_index = FrontendLibrary.lookup_port_index_in_hardware_configuration(port=port, port_configuration=current_hardware_config['ports'])
+            current_hardware_config['ports'][port.name] = port.TextSerialize()
+                        # if port_index >= 0:
+                        #     current_hardware_config['ports'][port_index] = port.Serialize()
+                        # else:
+                        #     current_hardware_config['ports'] += [port.Serialize()]
+        return current_hardware_config
+                #prop_name = prop['props']['children']
+            #print('updating')
+
+            #return {}
+
+    return app, cache#, server
 
 def build_banner(app=None):
     return html.Div(
@@ -376,8 +679,8 @@ def build_banner(app=None):
             html.Div(
                 id="banner-text",
                 children=[
-                    html.H5("Manufacturing SPC Dashboard"),
-                    html.H6("Process Control and Exception Reporting"),
+                    html.H5("210 Gallon Reef Tank Dashboard"),
+                    html.H6("Water Parameter Control and Monitoring"),
                 ],
             ),
             html.Div(
@@ -386,7 +689,7 @@ def build_banner(app=None):
                     html.Button(
                         id="learn-more-button", children="LEARN MORE", n_clicks=0
                     ),
-                    html.Img(id="logo", src=app.get_asset_url("dash-logo-new.png")),
+                    html.Img(id="logo", src=app.get_asset_url("dongle.png")),
                 ],
             ),
         ],
@@ -400,23 +703,37 @@ def build_tabs():
         children=[
             dcc.Tabs(
                 id="app-tabs",
-                value="tab2",
+                value="tab1",
                 className="custom-tabs",
                 children=[
                     dcc.Tab(
-                        id="Specs-tab",
-                        label="Specification Settings",
+                        id="Hardware-config-tab",
+                        label="Hardware Configuration",
                         value="tab1",
+                        className="custom-tab",
+                        selected_className="custom-tab--selected",
+                    ),
+                    dcc.Tab(
+                        id="Controller-settings-tab",
+                        label="Tank Controller Settings",
+                        value="tab2",
                         className="custom-tab",
                         selected_className="custom-tab--selected",
                     ),
                     dcc.Tab(
                         id="Control-chart-tab",
                         label="Control Charts Dashboard",
-                        value="tab2",
+                        value="tab3",
                         className="custom-tab",
                         selected_className="custom-tab--selected",
                     ),
+                    # dcc.Tab(
+                    #     id="pH-chart-tab",
+                    #     label="pH Data",
+                    #     value="tab4",
+                    #     className="custom-tab",
+                    #     selected_className="custom-tab--selected",
+                    # ),
                 ],
             )
         ],
@@ -476,35 +793,359 @@ def init_value_setter_store():
     state_dict = init_df()
     return state_dict
 
+def init_hardware_config_store():
+    return {'ports': {}, 'muxes': {}}
+# def build_hardware_config_tab2():
+#     return [
+#         # Manually select metrics
+#         html.Div(
+#             id="hardware-config-intro-container",
+#             # className='twelve columns',
+#             children=html.P(
+#                 "Set up devices connected to system."
+#             ),
+#         ),
+#         html.Div(
+#             id="port-menu",
+#             children=[
+#                 html.Div(
+#                     id="port-name-headers",
+#                     #className="two columns",
+#                     children=[
+#                         html.Label(id="port-name-entry-title", children="Port Name", className="two columns"),
+#                         html.Label(id="port-name-entry-title", children="Port Type", className="two columns"),
+#                     ],
+#                     className='row'
+#                 ),
+#                 html.Br(),
+#                 html.Div(
+#                     id="port-data-entry",
+#                     # className='five columns',
+#                     children=[
+#                         dcc.Input(
+#                             id="port{}-name-text".format("0"),
+#                             type="text",
+#                             placeholder="Port Name",
+#                             className="four columns",
+#                         ),
+#                         dcc.Dropdown(
+#                             id="port-select-dropdown",
+#                             options=list(
+#                                 {"label": port, "value": port} for port in ports
+#                             ),
+#                             value=ports[1],
+#                             className="four columns",
+#                         )
+#                     ],
+#                 ),
+#                 # html.Div(
+#                 #     id="port-select-menu",
+#                 #     # className='five columns',
+#                 #     children=[
+#                 #         html.Label(id="port-select-title", children="Port Type"),
+#                 #         html.Br(),
+#                 #         dcc.Dropdown(
+#                 #             id="port-select-dropdown",
+#                 #             options=list(
+#                 #                 {"label": port, "value": port} for port in ports
+#                 #             ),
+#                 #             value=ports[1],
+#                 #         ),
+#                 #     ],
+#                 # ),
+#                 html.Br(),
+#                 html.Div(
+#                     id="value-setter-menu",
+#                     # className='six columns',
+#                     children=[
+#                         html.Div(id="value-setter-panel"),
+#                         html.Br(),
+#                         html.Div(
+#                             id="button-div",
+#                             children=[
+#                                 html.Button("Update", id="value-setter-set-btn"),
+#                                 html.Button(
+#                                     "View current setup",
+#                                     id="value-setter-view-btn",
+#                                     n_clicks=0,
+#                                 ),
+#                             ],
+#                         ),
+#                         html.Div(
+#                             id="value-setter-view-output", className="output-datatable"
+#                         ),
+#                     ],
+#                 ),
+#             ],
+#         ),
+#     ]
 
-def build_tab_1():
+def build_hardware_config_tab():
+    #available_devices = list({"label": device, "value": device} for device in ControllerLibrary.HAL.SUPPORTED_DEVICES)
     return [
         # Manually select metrics
         html.Div(
-            id="set-specs-intro-container",
+            id="set-hardware-config-intro-container",
             # className='twelve columns',
-            children=html.P(
-                "Use historical control limits to establish a benchmark, or set new values."
+            children=[html.P(
+                "Configure Controller Ports, Devices, and Routes",
             ),
+            html.Button(
+                "Load Hardware Configuration to Controller",
+                id="load-hardware-config-btn",
+                n_clicks=0,
+            )],
         ),
         html.Div(
-            id="settings-menu",
+            id="hardware-config-subheading",
+            children=html.P("Devices"),
+        ),
+        #html.Br(),
+
+        #Devices menu
+        html.Div(
+            id="devices-menu",
             children=[
                 html.Div(
-                    id="metric-select-menu",
+                    id="device-select-menu",
                     # className='five columns',
                     children=[
-                        html.Label(id="metric-select-title", children="Select Metrics"),
+                        html.Label(id="device-select-title", children="Define New Device"),
                         html.Br(),
                         dcc.Dropdown(
-                            id="metric-select-dropdown",
-                            options=list(
-                                {"label": param, "value": param} for param in params[1:]
-                            ),
-                            value=params[1],
+                            id="device-select-dropdown",
+                            options=[{"label": 'New Device...', "value":"new_device"}] + [{"label": device, "value": device} for device
+                                                                         in ControllerLibrary.HAL.SUPPORTED_DEVICES]
+                            # list(
+                            #     {"label": device, "value": device} for device in
+                            #     ControllerLibrary.HAL.SUPPORTED_DEVICES
+                            # ),
+                            # value=params[1],
+                        ),
+                        html.Br(),
+                        html.Label(id="device-select-title", children="Modify Existing Device"),
+                        html.Br(),
+                        FrontendLibrary.build_port_selector_dropdown(),
+                        html.Br(),
+                        html.Div(
+                            id="button-div",
+                            children=[
+                                html.Button("Add Device", id="add-device-btn"),
+                            ],
                         ),
                     ],
                 ),
+                html.Div(
+                    id="device-config-menu",
+                    # className='six columns',
+                    children=[
+                        html.Div(id="device-config-panel"),
+                        html.Br(),
+                        html.Div(
+                            id="button-div",
+                            children=[
+                                html.Button("Update Device", id="update-device-btn"),
+                                # html.Button("Update Port", id="value-setter-set-btn"),
+                                # html.Button(
+                                #     "Load Hardware Configuration to Controller",
+                                #     id="load-hardware-config-btn",
+                                #     n_clicks=0,
+                                # ),
+                            ],
+                        ),
+                        # html.Div(
+                        #     id="value-setter-view-output", className="output-datatable"
+                        # ),
+                    ],
+                ),
+            ],
+        ),
+
+        # Ports menu
+        html.Div(
+            id="hardware-config-subheading",
+            children=html.P("Ports"),
+        ),
+        html.Div(
+            id="ports-menu",
+            children=[
+                html.Div(
+                    id="port-select-menu",
+                    # className='five columns',
+                    children=[
+                        html.Label(id="port-select-title", children="Modify Existing Port"),
+                        html.Br(),
+                        dcc.Dropdown(
+                            id="port-select-dropdown",
+                            options=list(
+                                {"label": port.name + ' (' + port.port_type + ')', "value": port.name} for port in configured_ports
+                            ),
+                            # value=params[1],
+                        ),
+                        html.Br(),
+                        # html.Label(id="port-select-title", children="Configure New Port"),
+                        # html.Br(),
+                        # FrontendLibrary.build_port_selector_dropdown(),
+                        # dcc.Dropdown(
+                        #     id="new-port-select-dropdown",
+                        #     options=list(
+                        #         {"label": port, "value": port} for port in ports
+                        #     ),
+                        #     #value=params[1],
+                        # ),
+                        html.Br(),
+                        html.Div(
+                            id="button-div",
+                            children=[
+                                html.Button("Add Port", id="add-port-btn"),
+                            ],
+                        ),
+                    ],
+                ),
+                html.Div(
+                    id="port-setter-menu",
+                    # className='six columns',
+                    children=[
+                        html.Div(id="port-setter-panel"),
+                        html.Br(),
+                        html.Div(
+                            id="button-div",
+                            children=[
+                                html.Button("Update Port", id="update-port-btn"),
+                                #html.Button("Update Port", id="value-setter-set-btn"),
+                                # html.Button(
+                                #     "Load Hardware Configuration to Controller",
+                                #     id="load-hardware-config-btn",
+                                #     n_clicks=0,
+                                # ),
+                            ],
+                        ),
+                        # html.Div(
+                        #     id="value-setter-view-output", className="output-datatable"
+                        #),
+                    ],
+                ),
+            ],
+        ),
+        html.Br(),
+        html.Div(id="hardware-config-subheading",
+                 children=html.P("Routing")),
+        html.Div(
+            id="routing-menu",
+            children=[
+                html.Div(
+                    id="route-select-menu",
+                    # className='five columns',
+                    children=[
+                        html.Label(id="route-select-title", children="Device Routes"),
+                        html.Br(),
+                        dcc.Dropdown(
+                            id="route-select-dropdown",
+                            options=list(
+                                {'label': port.name + ' (' + port.route[0]['origin'] + '-> ' + port.route[-1]['destination'] + ')', 'value': port.name} for port in configured_ports
+                                # {"label": port.name + ' (' + port.port_type + ')', "value": port.name} for port in
+                                # configured_ports
+                            ),
+                            # value=params[1],
+                        ),
+                        html.Br(),
+                        html.Label(id="route-select-title", children="Configure New Port"),
+                        html.Br(),
+                        FrontendLibrary.build_port_selector_dropdown(),
+                        # dcc.Dropdown(
+                        #     id="new-port-select-dropdown",
+                        #     options=list(
+                        #         {"label": port, "value": port} for port in ports
+                        #     ),
+                        #     #value=params[1],
+                        # ),
+                        html.Br(),
+                        html.Div(
+                            id="button-div",
+                            children=[
+                                html.Button("Add Port", id="add-port-btn"),
+                            ],
+                        ),
+                    ],
+                ),
+                html.Div(
+                    id="port-setter-menu",
+                    # className='six columns',
+                    children=[
+                        html.Div(id="port-setter-panel"),
+                        html.Br(),
+                        html.Div(
+                            id="button-div",
+                            children=[
+                                html.Button("Update Port", id="update-port-btn"),
+                                # html.Button("Update Port", id="value-setter-set-btn"),
+                                # html.Button(
+                                #     "Load Hardware Configuration to Controller",
+                                #     id="load-hardware-config-btn",
+                                #     n_clicks=0,
+                                # ),
+                            ],
+                        ),
+                        # html.Div(
+                        #     id="value-setter-view-output", className="output-datatable"
+                        # ),
+                    ],
+                ),
+            ],
+        ),
+        # html.Div(
+        #     id="set-hardware-route-intro-container",
+        #     # className='twelve columns',
+        #     children=html.P(
+        #         "Configure Device Routing"
+        #     ),
+        # ),
+        html.Div(id='hardware_config_button_clicks', children='update_port:0|add_port:0', style={'display': 'none'})
+    ]
+
+def build_controller_settings_tab():
+    return [
+        # Manually select metrics
+        html.Div(
+            id="controller-settings-intro-container",
+            # className='twelve columns',
+            children=html.P(
+                "Set up devices connected to system."
+            ),
+        ),
+        html.Div(
+            id="port-menu",
+            children=[
+                html.Div(
+                    id="port-name-headers",
+                    #className="two columns",
+                    children=[
+                        html.Label(id="port-name-entry-title", children="Port Name", className="two columns"),
+                        html.Label(id="port-name-entry-title", children="Port Type", className="two columns"),
+                    ],
+                ),
+                html.Br(),
+                html.Div(
+                    id="port-data-entry",
+                    # className='five columns',
+                    children=[
+                        dcc.Input(
+                            id="port{}-name-text".format("0"),
+                            type="text",
+                            placeholder="Port Name",
+                            className="two columns",
+                        ),
+                        dcc.Dropdown(
+                            id="port-select-dropdown",
+                            options=list(
+                                {"label": port, "value": port} for port in ports
+                            ),
+                            value=ports[1],
+                            className="two columns",
+                        )
+                    ],
+                ),
+                html.Br(),
                 html.Div(
                     id="value-setter-menu",
                     # className='six columns',
@@ -531,6 +1172,61 @@ def build_tab_1():
         ),
     ]
 
+def build_tab_1():
+    return [
+        # Manually select metrics
+        html.Div(
+            id="set-specs-intro-container",
+            # className='twelve columns',
+            children=html.P(
+                "Use historical control limits to establish a benchmark, or set new values."
+            ),
+        ),
+        html.Div(
+            id="settings-menu",
+            children=[
+                html.Div(
+                    id="metric-select-menu",
+                    # className='five columns',
+                    children=[
+                        html.Label(id="metric-select-title", children="Subsystem"),
+                        html.Br(),
+                        dcc.Dropdown(
+                            id="metric-select-dropdown",
+                            options=list(
+                                {"label": subsystem, "value": subsystem} for subsystem in subsystems
+                            ),
+                            value=params[1],
+                        ),
+                    ],
+                ),
+                html.Div(
+                    id="value-setter-menu",
+                    # className='six columns',
+                    children=[
+                        html.Div(id="value-setter-panel"),
+                        html.Br(),
+                        html.Div(
+                            id="button-div",
+                            children=[
+                                html.Button("Update", id="value-setter-set-btn"),
+                                html.Button(
+                                    "View current setup",
+                                    id="value-setter-view-btn",
+                                    n_clicks=0,
+                                ),
+                                html.Button("Add Port", id="update-port-btn"),
+                            ],
+                        ),
+                        html.Div(
+                            id="value-setter-view-output", className="output-datatable"
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    ]
+
 
 def build_value_setter_line(line_num, label, value, col3):
     return html.Div(
@@ -543,6 +1239,88 @@ def build_value_setter_line(line_num, label, value, col3):
         className="row",
     )
 
+def build_device_config_attribute_addition_line(line_num, device_type=None):#, label, value, col3):
+    if device_type == None:
+        dropdown_options = [{"label": key, "value": key} for key in FrontendLibrary.build_complete_attribute_option_list()]
+    else:
+        dropdown_options = [{"label": key, "value": key} for key in ControllerLibrary.HAL.SUPPORTED_DEVICES[device_type].keys()]
+
+    return html.Div(
+        id=line_num,
+        children=[
+            dcc.Dropdown(options=dropdown_options, className="four columns"),
+            html.Button("Add Attribute", id="add-device-attribute-btn", className="four columns"),
+            #html.Label(label, className="four columns"),
+            #html.Label(value, className="four columns"),
+            #html.Div(col3, className="four columns"),
+        ],
+        className="row",
+    )
+
+def build_port_config_line(line_num, port, attribute):
+    if attribute == 'name':
+        input_object = dcc.Input(value=getattr(port,attribute), debounce=True)
+    elif attribute == 'port_type':
+        input_object = FrontendLibrary.build_port_selector_dropdown(value=getattr(port,attribute))#, PORT_TYPES=ports)
+    elif attribute.__contains__('_pin'):
+        input_object = FrontendLibrary.build_pin_selector_dropdown(value=getattr(port, attribute))#, PORT_TYPES=ports)
+    else:
+        input_object = dcc.Input(value=getattr(port, attribute), debounce=True)
+    #elif attribute ==
+    #children = [html.Label(attribute, className="four columns")]
+    input_object.className = "four columns"
+    return html.Div(
+        id=line_num,
+        children=[
+            html.Label(attribute, className="four columns"),
+            html.Div(input_object)#,className='four columns'),#html.Label(value, className="four columns"),
+            #html.Div(col3, className="four columns"),
+        ],
+        className="row",
+    )
+
+def build_device_config_line(div_id=None, device=None, attribute=None, input_object_id=None):
+    if device == "new_device":
+        input_object_type = ControllerLibrary.HAL.COMMON_DEVICE_ATTRIBUTES[attribute]
+        input_value = None
+    else:
+        device = FrontendLibrary.lookup_device_by_name(device, configured_devices)
+        input_object_type = ControllerLibrary.HAL.SUPPORTED_DEVICES[device][attribute]
+        input_value = getattr(device, attribute)
+
+    if input_object_type == 'text':
+        input_object = dcc.Input(value=input_value, debounce=True)
+    elif input_object_type == 'device_type_dropdown':
+        input_object = FrontendLibrary.build_device_selector_dropdown(value=input_value)#, PORT_TYPES=ports)
+    elif input_object_type == 'address':
+        input_object = FrontendLibrary.build_pin_selector_dropdown(value=input_value)#, PORT_TYPES=ports)
+    else:
+        input_object = dcc.Input(value=input_value, debounce=True)
+    #elif attribute ==
+    #children = [html.Label(attribute, className="four columns")]
+    input_object.className = "four columns"
+    input_object.id = input_object_id
+    return html.Div(
+        id=div_id,
+        children=[
+            html.Label(attribute, className="four columns"),
+            html.Div(input_object)#,className='four columns'),#html.Label(value, className="four columns"),
+            #html.Div(col3, className="four columns"),
+        ],
+        className="row",
+    )
+
+def build_value_setter_toggle(line_num, label, value, col3):
+    return html.Div(
+        id=line_num,
+        children=[
+            html.Label(label, className="four columns"),
+            html.Label(value, className="four columns"),
+            #html.Div(col3, className="four columns"),
+            html.Div(daq.ToggleSwitch(id='subsystem-on-off', value=False), html.Div(id='subsystem-on-off-output'))
+        ],
+        className="row",
+    )
 
 def generate_modal():
     return html.Div(
@@ -1166,230 +1944,11 @@ def SetAppLayout(app=None):
                 ],
             ),
             dcc.Store(id="value-setter-store", data=init_value_setter_store()),
+            dcc.Store(id="hardware-config-store", data=init_hardware_config_store()),
             dcc.Store(id="n-interval-stage", data=50),
             generate_modal(),
         ],
     )
-
-
-# @app.callback(
-#     [Output("app-content", "children"), Output("interval-component", "n_intervals")],
-#     [Input("app-tabs", "value")],
-#     [State("n-interval-stage", "data")],
-# )
-# def render_tab_content(tab_switch, stopped_interval):
-#     if tab_switch == "tab1":
-#         return build_tab_1(), stopped_interval
-#     return (
-#         html.Div(
-#             id="status-container",
-#             children=[
-#                 build_quick_stats_panel(),
-#                 html.Div(
-#                     id="graphs-container",
-#                     children=[build_top_panel(stopped_interval), build_chart_panel()],
-#                 ),
-#             ],
-#         ),
-#         stopped_interval,
-#     )
-
-
-# # Update interval
-# @app.callback(
-#     Output("n-interval-stage", "data"),
-#     [Input("app-tabs", "value")],
-#     [
-#         State("interval-component", "n_intervals"),
-#         State("interval-component", "disabled"),
-#         State("n-interval-stage", "data"),
-#     ],
-# )
-# def update_interval_state(tab_switch, cur_interval, disabled, cur_stage):
-#     if disabled:
-#         return cur_interval
-#
-#     if tab_switch == "tab1":
-#         return cur_interval
-#     return cur_stage
-#
-#
-# # Callbacks for stopping interval update
-# @app.callback(
-#     [Output("interval-component", "disabled"), Output("stop-button", "buttonText")],
-#     [Input("stop-button", "n_clicks")],
-#     [State("interval-component", "disabled")],
-# )
-# def stop_production(n_clicks, current):
-#     if n_clicks == 0:
-#         return True, "start"
-#     return not current, "stop" if current else "start"
-#
-#
-# # ======= Callbacks for modal popup =======
-# @app.callback(
-#     Output("markdown", "style"),
-#     [Input("learn-more-button", "n_clicks"), Input("markdown_close", "n_clicks")],
-# )
-# def update_click_output(button_click, close_click):
-#     ctx = dash.callback_context
-#
-#     if ctx.triggered:
-#         prop_id = ctx.triggered[0]["prop_id"].split(".")[0]
-#         if prop_id == "learn-more-button":
-#             return {"display": "block"}
-#
-#     return {"display": "none"}
-
-
-# ======= update progress gauge =========
-# @app.callback(
-#     output=Output("progress-gauge", "value"),
-#     inputs=[Input("interval-component", "n_intervals")],
-# )
-# def update_gauge(interval):
-#     if interval < max_length:
-#         total_count = interval
-#     else:
-#         total_count = max_length
-#
-#     return int(total_count)
-#
-#
-# # ===== Callbacks to update values based on store data and dropdown selection =====
-# @app.callback(
-#     output=[
-#         Output("value-setter-panel", "children"),
-#         Output("ud_usl_input", "value"),
-#         Output("ud_lsl_input", "value"),
-#         Output("ud_ucl_input", "value"),
-#         Output("ud_lcl_input", "value"),
-#     ],
-#     inputs=[Input("metric-select-dropdown", "value")],
-#     state=[State("value-setter-store", "data")],
-# )
-# def build_value_setter_panel(dd_select, state_value):
-#     return (
-#         [
-#             build_value_setter_line(
-#                 "value-setter-panel-header",
-#                 "Specs",
-#                 "Historical Value",
-#                 "Set new value",
-#             ),
-#             build_value_setter_line(
-#                 "value-setter-panel-usl",
-#                 "Upper Specification limit",
-#                 state_dict[dd_select]["usl"],
-#                 ud_usl_input,
-#             ),
-#             build_value_setter_line(
-#                 "value-setter-panel-lsl",
-#                 "Lower Specification limit",
-#                 state_dict[dd_select]["lsl"],
-#                 ud_lsl_input,
-#             ),
-#             build_value_setter_line(
-#                 "value-setter-panel-ucl",
-#                 "Upper Control limit",
-#                 state_dict[dd_select]["ucl"],
-#                 ud_ucl_input,
-#             ),
-#             build_value_setter_line(
-#                 "value-setter-panel-lcl",
-#                 "Lower Control limit",
-#                 state_dict[dd_select]["lcl"],
-#                 ud_lcl_input,
-#             ),
-#         ],
-#         state_value[dd_select]["usl"],
-#         state_value[dd_select]["lsl"],
-#         state_value[dd_select]["ucl"],
-#         state_value[dd_select]["lcl"],
-#     )
-#
-#
-# # ====== Callbacks to update stored data via click =====
-# @app.callback(
-#     output=Output("value-setter-store", "data"),
-#     inputs=[Input("value-setter-set-btn", "n_clicks")],
-#     state=[
-#         State("metric-select-dropdown", "value"),
-#         State("value-setter-store", "data"),
-#         State("ud_usl_input", "value"),
-#         State("ud_lsl_input", "value"),
-#         State("ud_ucl_input", "value"),
-#         State("ud_lcl_input", "value"),
-#     ],
-# )
-# def set_value_setter_store(set_btn, param, data, usl, lsl, ucl, lcl):
-#     if set_btn is None:
-#         return data
-#     else:
-#         data[param]["usl"] = usl
-#         data[param]["lsl"] = lsl
-#         data[param]["ucl"] = ucl
-#         data[param]["lcl"] = lcl
-#
-#         # Recalculate ooc in case of param updates
-#         data[param]["ooc"] = populate_ooc(df[param], ucl, lcl)
-#         return data
-#
-#
-# @app.callback(
-#     output=Output("value-setter-view-output", "children"),
-#     inputs=[
-#         Input("value-setter-view-btn", "n_clicks"),
-#         Input("metric-select-dropdown", "value"),
-#         Input("value-setter-store", "data"),
-#     ],
-# )
-# def show_current_specs(n_clicks, dd_select, store_data):
-#     if n_clicks > 0:
-#         curr_col_data = store_data[dd_select]
-#         new_df_dict = {
-#             "Specs": [
-#                 "Upper Specification Limit",
-#                 "Lower Specification Limit",
-#                 "Upper Control Limit",
-#                 "Lower Control Limit",
-#             ],
-#             "Current Setup": [
-#                 curr_col_data["usl"],
-#                 curr_col_data["lsl"],
-#                 curr_col_data["ucl"],
-#                 curr_col_data["lcl"],
-#             ],
-#         }
-#         new_df = pd.DataFrame.from_dict(new_df_dict)
-#         return dash_table.DataTable(
-#             style_header={"fontWeight": "bold", "color": "inherit"},
-#             style_as_list_view=True,
-#             fill_width=True,
-#             style_cell_conditional=[
-#                 {"if": {"column_id": "Specs"}, "textAlign": "left"}
-#             ],
-#             style_cell={
-#                 "backgroundColor": "#1e2130",
-#                 "fontFamily": "Open Sans",
-#                 "padding": "0 2rem",
-#                 "color": "darkgray",
-#                 "border": "none",
-#             },
-#             css=[
-#                 {"selector": "tr:hover td", "rule": "color: #91dfd2 !important;"},
-#                 {"selector": "td", "rule": "border: none !important;"},
-#                 {
-#                     "selector": ".dash-cell.focused",
-#                     "rule": "background-color: #1e2130 !important;",
-#                 },
-#                 {"selector": "table", "rule": "--accent: #1e2130;"},
-#                 {"selector": "tr", "rule": "background-color: transparent"},
-#             ],
-#             data=new_df.to_dict("rows"),
-#             columns=[{"id": c, "name": c} for c in ["Specs", "Current Setup"]],
-#         )
-
 
 # decorator for list of output
 def create_callback(param):
@@ -1403,119 +1962,3 @@ def create_callback(param):
     return callback
 
 
-# for param in params[1:]:
-#     update_param_row_function = create_callback(param)
-#     app.callback(
-#         output=[
-#             Output(param + suffix_count, "children"),
-#             Output(param + suffix_sparkline_graph, "extendData"),
-#             Output(param + suffix_ooc_n, "children"),
-#             Output(param + suffix_ooc_g, "value"),
-#             Output(param + suffix_indicator, "color"),
-#         ],
-#         inputs=[Input("interval-component", "n_intervals")],
-#         state=[State("value-setter-store", "data")],
-#     )(update_param_row_function)
-
-
-# #  ======= button to choose/update figure based on click ============
-# @app.callback(
-#     output=Output("control-chart-live", "figure"),
-#     inputs=[
-#         Input("interval-component", "n_intervals"),
-#         Input(params[1] + suffix_button_id, "n_clicks"),
-#         Input(params[2] + suffix_button_id, "n_clicks"),
-#         Input(params[3] + suffix_button_id, "n_clicks"),
-#         Input(params[4] + suffix_button_id, "n_clicks"),
-#         Input(params[5] + suffix_button_id, "n_clicks"),
-#         Input(params[6] + suffix_button_id, "n_clicks"),
-#         Input(params[7] + suffix_button_id, "n_clicks"),
-#     ],
-#     state=[State("value-setter-store", "data"), State("control-chart-live", "figure")],
-# )
-# def update_control_chart(interval, n1, n2, n3, n4, n5, n6, n7, data, cur_fig):
-#     # Find which one has been triggered
-#     ctx = dash.callback_context
-#
-#     if not ctx.triggered:
-#         return generate_graph(interval, data, params[1])
-#
-#     if ctx.triggered:
-#         # Get most recently triggered id and prop_type
-#         splitted = ctx.triggered[0]["prop_id"].split(".")
-#         prop_id = splitted[0]
-#         prop_type = splitted[1]
-#
-#         if prop_type == "n_clicks":
-#             curr_id = cur_fig["data"][0]["name"]
-#             prop_id = prop_id[:-7]
-#             if curr_id == prop_id:
-#                 return generate_graph(interval, data, curr_id)
-#             else:
-#                 return generate_graph(interval, data, prop_id)
-#
-#         if prop_type == "n_intervals" and cur_fig is not None:
-#             curr_id = cur_fig["data"][0]["name"]
-#             return generate_graph(interval, data, curr_id)
-#
-#
-# # Update piechart
-# @app.callback(
-#     output=Output("piechart", "figure"),
-#     inputs=[Input("interval-component", "n_intervals")],
-#     state=[State("value-setter-store", "data")],
-# )
-# def update_piechart(interval, stored_data):
-#     if interval == 0:
-#         return {
-#             "data": [],
-#             "layout": {
-#                 "font": {"color": "white"},
-#                 "paper_bgcolor": "rgba(0,0,0,0)",
-#                 "plot_bgcolor": "rgba(0,0,0,0)",
-#             },
-#         }
-#
-#     if interval >= max_length:
-#         total_count = max_length - 1
-#     else:
-#         total_count = interval - 1
-#
-#     values = []
-#     colors = []
-#     for param in params[1:]:
-#         ooc_param = (stored_data[param]["ooc"][total_count] * 100) + 1
-#         values.append(ooc_param)
-#         if ooc_param > 6:
-#             colors.append("#f45060")
-#         else:
-#             colors.append("#91dfd2")
-#
-#     new_figure = {
-#         "data": [
-#             {
-#                 "labels": params[1:],
-#                 "values": values,
-#                 "type": "pie",
-#                 "marker": {"colors": colors, "line": dict(color="white", width=2)},
-#                 "hoverinfo": "label",
-#                 "textinfo": "label",
-#             }
-#         ],
-#         "layout": {
-#             "margin": dict(t=20, b=50),
-#             "uirevision": True,
-#             "font": {"color": "white"},
-#             "showlegend": False,
-#             "paper_bgcolor": "rgba(0,0,0,0)",
-#             "plot_bgcolor": "rgba(0,0,0,0)",
-#             "autosize": True,
-#         },
-#     }
-#     return new_figure
-
-#InitializeFrontend()
-
-# # Running the server
-# if __name__ == "__main__":
-#     app.run_server(debug=True, port=8050)

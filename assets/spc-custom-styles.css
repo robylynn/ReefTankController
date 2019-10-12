@@ -142,7 +142,7 @@ body {
   cursor: pointer;
 }
 
-#Specs-tab.custom-tab, #Control-chart-tab.custom-tab {
+#Hardware-config-tab.custom-tab, #Specs-tab.custom-tab, #Control-chart-tab.custom-tab, #Controller-settings-tab.custom-tab {
   background-color: #161a28;
   letter-spacing: 1px;
   color: inherit;
@@ -156,11 +156,11 @@ body {
   height: 18px;
 }
 
-#Specs-tab.custom-tab--selected, #Control-chart-tab.custom-tab--selected {
+#Hardware-config-tab.custom-tab--selected, #Specs-tab.custom-tab--selected, #Control-chart-tab.custom-tab--selected, #Controller-settings-tab.custom-tab--selected {
   border-bottom: #91dfd2 solid 4px !important;
 }
 
-#Specs-tab.custom-tab {
+#Specs-tab.custom-tab, #Hardware-config-tab.custom-tab, #Controller-settings-tab.custom-tab {
   margin-right: 3px;
 }
 
@@ -284,7 +284,6 @@ body {
   font-size: 1.6rem;
 }
 
-
 #metric-select-title {
   color: darkgray;
 }
@@ -315,12 +314,12 @@ body {
   text-align: right;
 }
 
-#value-setter-view-btn, #value-setter-set-btn {
+#value-setter-view-btn, #value-setter-set-btn, #add-port-btn, #update-port-btn {
   border: 1px solid #4B5460;
   color: darkgray;
 }
 
-#value-setter-set-btn:hover, #value-setter-view-btn:hover {
+#value-setter-set-btn:hover, #value-setter-view-btn:hover, #add-port-btn:hover, #update-port-btn:hover {
   color: #91dfd2;
   border-color: white;
 }
@@ -411,6 +410,81 @@ body {
   border-color: #91dfd2 !important;
 }
 
+/* Hardware config tab
+–––––––––––––––––––––––––––––––––––––––––––––––––– */
+
+#set-hardware-config-intro-container {
+  font-weight: bold;
+  margin: 5rem 5rem;
+  font-size: 2.6rem;
+  text-align: center
+}
+
+#hardware-config-subheading {
+  width: 100%;
+  font-weight: bold;
+  margin: 3rem 2rem 1rem;
+  font-size: 1.6rem;
+}
+
+#port-select-title, #device-select-title, #route-select-title {
+  color: darkgray;
+}
+
+#device-config-panel-header {
+  font-weight: bold;
+  color: darkgray;
+  line-height: 1;
+  /*padding: 2rem 0;*/
+}
+
+#device-config-line {
+  /*font-weight: bold;*/
+  /*color: darkgray;*/
+  /*line-height: 1;*/
+  padding: 1rem 0 1rem;
+}
+
+#add-device-attribute-line {
+  font-weight: bold;
+  color: darkgray;
+  line-height: 1;
+  padding: 1rem 0 0rem;
+  border-top: 1px solid #4b5460;
+}
+
+#new-device-type-selection-line {
+  font-weight: bold;
+  color: darkgray;
+  line-height: 1;
+  padding: 1rem 0 1rem;
+  border-bottom: 1px solid #4b5460;
+  vertical-align: top;
+}
+
+#device-config-panel-header > div {
+  text-align: right;
+}
+
+#add-device-attribute-line > div {
+  text-align: left;
+}
+
+
+#hardware-panel-row {
+    align-items: middle;
+    display: table;
+    /*
+    flex-direction: column;
+    height: fit-content !important;
+    justify-content: space-between;
+
+    border-top: 1px solid #1E2130;
+    border-bottom: 1px solid #1E2130;
+    */
+}
+
+
 /* Container
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 
@@ -437,11 +511,38 @@ body {
   margin: 4rem 5rem 1rem;
 }
 
+#ports-menu, #devices-menu, #routing-menu {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-evenly;
+  margin: 4rem 5rem 1rem;
+}
+
 #metric-select-menu {
   flex: 1 1 0;
 }
 
+#port-select-menu {
+  flex: 1 1 0;
+}
+
+#device-select-menu {
+  flex: 1 1 0;
+}
+
+#route-select-menu {
+  flex: 1 1 0;
+}
+
 #value-setter-menu {
+  flex: 1 1 30%;
+  margin-left: 5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+#port-setter-menu, #device-config-menu {
   flex: 1 1 30%;
   margin-left: 5rem;
   display: flex;
@@ -626,12 +727,49 @@ body {
     font-size: inherit;
   }
 
+  #set-hwardware-config-intro-container {
+    margin: 4rem 2rem 0rem 2rem;
+    font-size: inherit;
+  }
+
   #settings-menu {
     margin: 2rem;
     flex-direction: column;
   }
 
+  #ports-menu, #devices-menu, #routing-menu {
+    margin: 2rem;
+    flex-direction: column;
+  }
+
   #settings-menu > div {
+    width: 100%;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    flex-basis: auto;
+    margin: 2rem 0rem;
+  }
+
+  #ports-menu > div {
+    width: 100%;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    flex-basis: auto;
+    margin: 2rem 0rem;
+  }
+
+  #devices-menu > div {
+    width: 100%;
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    flex-basis: auto;
+    margin: 2rem 0rem;
+  }
+
+  #routing-menu > div {
     width: 100%;
     flex: none;
     display: flex;

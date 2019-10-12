@@ -80,6 +80,7 @@
 
   .four.columns {
     width: 30.6666666667%;
+    vertical-align: middle;
   }
 
   .five.columns {
@@ -567,6 +568,7 @@ hr {
   content: "";
   display: table;
   clear: both;
+  align-items: middle;
 }
 
 
