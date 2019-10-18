@@ -15,7 +15,22 @@ def build_port_selector_dropdown(value=None, port_types=HAL.PORT_TYPES):
                         value=value,
                         )
 
-def build_device_selector_dropdown(id="device-type-select-dropdown", value=None, device_types=HAL.SUPPORTED_DEVICES):
+def build_device_selector_dropdown_options_list(hardware_configuration={}):
+    return [{"label": 'New Device...', "value": "new_device"}] + [
+        {"label": device + ' (' + hardware_configuration['devices'][device]['device_type'] + ')', "value": device} for
+        device in hardware_configuration['devices']]
+    # return dcc.Dropdown(id=id,
+    #                     options=list({"label": device, "value": device} for device in sorted(list(device_types.keys()))),
+    #                     #value=list({"label": value, "value": value}),
+    #                     value=value,
+    #                     )
+
+def build_route_selector_options_list(hardware_configuration={}):
+    return [{'label': hardware_configuration['devices'][device]['name'] + ' (' + str(
+        len(hardware_configuration['routes'][hardware_configuration['devices'][device]['name']])) + ' segment(s))',
+            'value': hardware_configuration['devices'][device]['name']} for device in hardware_configuration['devices'].keys()]
+
+def build_device_type_selector_dropdown(id="device-type-select-dropdown", value=None, device_types=HAL.SUPPORTED_DEVICES):
     return dcc.Dropdown(id=id,
                         options=list({"label": device, "value": device} for device in sorted(list(device_types.keys()))),
                         #value=list({"label": value, "value": value}),

@@ -314,12 +314,12 @@ body {
   text-align: right;
 }
 
-#value-setter-view-btn, #value-setter-set-btn, #add-port-btn, #update-port-btn {
+#value-setter-view-btn, #value-setter-set-btn, #add-port-btn, #update-port-btn, #update-device-btn {
   border: 1px solid #4B5460;
   color: darkgray;
 }
 
-#value-setter-set-btn:hover, #value-setter-view-btn:hover, #add-port-btn:hover, #update-port-btn:hover {
+#value-setter-set-btn:hover, #value-setter-view-btn:hover, #add-port-btn:hover, #update-port-btn:hover, #update-device-btn:hover {
   color: #91dfd2;
   border-color: white;
 }
@@ -431,18 +431,19 @@ body {
   color: darkgray;
 }
 
-#device-config-panel-header {
+#device-config-panel-header, #route-config-panel-header {
   font-weight: bold;
   color: darkgray;
   line-height: 1;
   /*padding: 2rem 0;*/
 }
 
-#device-config-line {
+#device-config-line, #route-segment-line {
   /*font-weight: bold;*/
   /*color: darkgray;*/
   /*line-height: 1;*/
   padding: 1rem 0 1rem;
+  vertical-align: middle;
 }
 
 #add-device-attribute-line {
@@ -453,7 +454,7 @@ body {
   border-top: 1px solid #4b5460;
 }
 
-#new-device-type-selection-line {
+#device-type-selection-line {
   font-weight: bold;
   color: darkgray;
   line-height: 1;
@@ -485,6 +486,16 @@ body {
 }
 
 
+.hardware-config-tab-btn {
+  border: 1px solid #4B5460;
+  color: darkgray;
+}
+
+.hardware-config-tab-btn:hover {
+  color: #91dfd2;
+  border-color: white;
+}
+
 /* Container
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 
@@ -509,6 +520,10 @@ body {
   align-items: flex-start;
   justify-content: space-evenly;
   margin: 4rem 5rem 1rem;
+}
+
+#device-config-section, #route-config-section {
+  padding: 0 0 3rem;
 }
 
 #ports-menu, #devices-menu, #routing-menu {
@@ -542,7 +557,7 @@ body {
   flex-direction: column;
 }
 
-#port-setter-menu, #device-config-menu {
+#port-setter-menu, #device-config-menu, #route-config-menu, #configuration-table-container {
   flex: 1 1 30%;
   margin-left: 5rem;
   display: flex;

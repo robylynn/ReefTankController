@@ -4,7 +4,9 @@ import pathlib
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
+import dash_table as dt
 from dash.dependencies import Input, Output, State
+from dash.exceptions import PreventUpdate
 import dash_table
 import plotly.graph_objs as go
 import dash_daq as daq
@@ -65,7 +67,7 @@ ud_porttype_input = dcc.Input(
 )
 
 
-def InitializeFrontend():
+def InitializeFrontend(hardware_configuration=None, system_manager=None):
     app = dash.Dash(
         __name__,
         meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
@@ -76,17 +78,22 @@ def InitializeFrontend():
     cache = Cache()
     cache.init_app(app.server, config=FrontendLibrary.CACHE_CONFIG)
 
-    SetAppLayout(app)
+    SetAppLayout(app, hardware_configuration)
+
+    @cache.memoize
+    def store_hardware_info():
+        pass
 
     @app.callback(
         [Output("app-content", "children"), Output("interval-component", "n_intervals")],
         [Input("app-tabs", "value")],
-        [State("n-interval-stage", "data")],
+        [State("n-interval-stage", "data"),
+         State("hardware-config-store", "data")],
     )
-    def render_tab_content(tab_switch, stopped_interval):
+    def render_tab_content(tab_switch, stopped_interval, hardware_configuration):
         if tab_switch == "tab1":
             #return build_hardware_config_tab(), stopped_interval
-            return build_hardware_config_tab(), stopped_interval
+            return build_hardware_config_tab(hardware_configuration), stopped_interval
         if tab_switch == "tab2":
             return build_tab_1(), stopped_interval
         return (
@@ -103,7 +110,27 @@ def InitializeFrontend():
             stopped_interval,
         )
 
+    @app.callback(
+        output=[Output("dummy_output", "children")],
+        inputs=[Input("save-hardware-config-btn", "n_clicks")],
+        state=[State("hardware-config-store", "data")]
+    )
+    def save_hardware_configuration(button_clicks, hardware_configuration):
+        if button_clicks:
+            ControllerLibrary.SaveHardwareConfiguration(hardware_configuration=hardware_configuration)
+        return [0]
+        #raise PreventUpdate
 
+    @app.callback(
+        output=[Output("dummy_output2", "children")],
+        inputs=[Input("load-hardware-config-to-controller-btn", "n_clicks")],
+        state=[State("hardware-config-store", "data")]
+    )
+    def load_hardware_config_to_controller(button_clicks, hardware_configuration):
+        if button_clicks:
+            #ControllerLibrary.SaveHardwareConfiguration(hardware_configuration=hardware_configuration)
+            system_manager.command_queue.put("abc")
+        return [0]
 
     @app.callback(
         output=Output("progress-gauge", "value"),
@@ -118,62 +145,62 @@ def InitializeFrontend():
         return int(total_count)
 
     # ===== Callbacks to update values based on store data and dropdown selection =====
-    @app.callback(
-        output=[
-            Output("value-setter-panel", "children"),
-            Output("ud_usl_input", "value"),
-            Output("ud_lsl_input", "value"),
-            Output("ud_ucl_input", "value"),
-            Output("ud_lcl_input", "value"),
-        ],
-        inputs=[Input("metric-select-dropdown", "value")],
-        state=[State("value-setter-store", "data")],
-    )
-    def build_value_setter_panel(dd_select, state_value):
-        return (
-            [
-                build_value_setter_toggle(
-                    "value-setter-panel-toggle",
-                    "Toggle",
-                    state_dict[dd_select]["lcl"],
-                    ud_lcl_input,
-                ),
-                build_value_setter_line(
-                    "value-setter-panel-header",
-                    "Parameter",
-                    "Historical Value",
-                    "Set new value",
-                ),
-                build_value_setter_line(
-                    "value-setter-panel-usl",
-                    "Upper Specification limit",
-                    state_dict[dd_select]["usl"],
-                    ud_usl_input,
-                ),
-                build_value_setter_line(
-                    "value-setter-panel-lsl",
-                    "Lower Specification limit",
-                    state_dict[dd_select]["lsl"],
-                    ud_lsl_input,
-                ),
-                build_value_setter_line(
-                    "value-setter-panel-ucl",
-                    "Upper Control limit",
-                    state_dict[dd_select]["ucl"],
-                    ud_ucl_input,
-                ),
-                build_value_setter_line(
-                    "value-setter-panel-lcl",
-                    "Lower Control limit",
-                    state_dict[dd_select]["lcl"],
-                    ud_lcl_input,
-                ),
-            ],
-            state_value[dd_select]["usl"],
-            state_value[dd_select]["lsl"],
-            state_value[dd_select]["ucl"],
-            state_value[dd_select]["lcl"],
-        )
+    # @app.callback(
+    #     output=[
+    #         Output("value-setter-panel", "children"),
+    #         Output("ud_usl_input", "value"),
+    #         Output("ud_lsl_input", "value"),
+    #         Output("ud_ucl_input", "value"),
+    #         Output("ud_lcl_input", "value"),
+    #     ],
+    #     inputs=[Input("metric-select-dropdown", "value")],
+    #     state=[State("value-setter-store", "data")],
+    # )
+    # def build_value_setter_panel(dd_select, state_value):
+    #     return (
+    #         [
+    #             build_value_setter_toggle(
+    #                 "value-setter-panel-toggle",
+    #                 "Toggle",
+    #                 state_dict[dd_select]["lcl"],
+    #                 ud_lcl_input,
+    #             ),
+    #             build_value_setter_line(
+    #                 "value-setter-panel-header",
+    #                 "Parameter",
+    #                 "Historical Value",
+    #                 "Set new value",
+    #             ),
+    #             build_value_setter_line(
+    #                 "value-setter-panel-usl",
+    #                 "Upper Specification limit",
+    #                 state_dict[dd_select]["usl"],
+    #                 ud_usl_input,
+    #             ),
+    #             build_value_setter_line(
+    #                 "value-setter-panel-lsl",
+    #                 "Lower Specification limit",
+    #                 state_dict[dd_select]["lsl"],
+    #                 ud_lsl_input,
+    #             ),
+    #             build_value_setter_line(
+    #                 "value-setter-panel-ucl",
+    #                 "Upper Control limit",
+    #                 state_dict[dd_select]["ucl"],
+    #                 ud_ucl_input,
+    #             ),
+    #             build_value_setter_line(
+    #                 "value-setter-panel-lcl",
+    #                 "Lower Control limit",
+    #                 state_dict[dd_select]["lcl"],
+    #                 ud_lcl_input,
+    #             ),
+    #         ],
+    #         state_value[dd_select]["usl"],
+    #         state_value[dd_select]["lsl"],
+    #         state_value[dd_select]["ucl"],
+    #         state_value[dd_select]["lcl"],
+    #     )
 
     @app.callback(
         output=[
@@ -212,6 +239,15 @@ def InitializeFrontend():
         )
 
     @app.callback(
+        inputs=[Input("hardware-config-store", "data")],
+        output=[Output("device-update-signal", "children")],
+        state=[State("device-update-signal", "children")]
+    )
+    def update_device_update_signal(hardware_configuration, update_signal):
+        system_manager.command_queue.put("update")
+        return [update_signal + 1]
+
+    @app.callback(
         output=[
             Output("device-config-panel", "children"),
             # Output("ud_portname_input", "value"),
@@ -220,99 +256,251 @@ def InitializeFrontend():
             # Output("ud_ucl_input", "value"),
             # Output("ud_lcl_input", "value"),
         ],
-        inputs=[Input("device-select-dropdown", "value")],
-        state=[State("value-setter-store", "data")],
+        inputs=[Input("device-select-dropdown", "value")],#, Input("device-update-signal", "children")],
+        state=[State("hardware-config-store", "data")],
     )
-    def build_device_config_panel(device_name, state_value):
-        # port_list = [port if port.name == port_name else None for port in configured_ports]
-        # for port in configured_ports:
-        #     if port.name == port_name:
-        #         break
-        device_panel_header = build_value_setter_line(
-                        "device-config-panel-header",
-                        "Attribute",
-                        "Historical Value",
-                        "Set new value",
-        )
-        attribute_addition_line = build_device_config_attribute_addition_line("add-device-attribute-line")
-
-        #port = FrontendLibrary.lookup_port_by_name(port_name=port_name, configured_ports=configured_ports)
-        port = ControllerLibrary.Port()
-        device_config_panel = [device_panel_header, attribute_addition_line]
+    def build_device_config_panel(device_name, hardware_configuration):
+        hardware_configuration = ControllerLibrary.UnpackHardwareConfiguration(hardware_configuration)
+        interaction_buttons = [html.Div(
+            id="button-div",
+            children=[html.Button("Update Device",
+                                  id="update-device-btn",
+                                  className="hardware-config-tab-btn",
+                                  n_clicks_timestamp=0),
+                      html.Button("Delete Device",
+                                  id="delete-device-btn",
+                                  className="hardware-config-tab-btn",
+                                  disabled=False,
+                                  n_clicks_timestamp=0),
+                      ],
+            ),
+        ]
         if device_name == "new_device":
-            device_type_selection_line = build_device_config_line('new-device-type-selection-line', device_name, "device_type",
-                                                                  input_object_id="new-device-type-selection-dropdown")
-            common_device_attributes = [build_device_config_line('device_config_line', device_name, key) for key in
-                                        sorted(list(ControllerLibrary.HAL.COMMON_DEVICE_ATTRIBUTES.keys()))]
+            interaction_buttons[0].children[1].disabled = True
+            device_type_selection_line = build_device_config_line(div_id='device-type-selection-line',
+                                                                  device_name=device_name, device_type="Unknown",
+                                                                  attribute="device_type",
+                                                                  input_object_id="device-type-selection-dropdown")
+
+        else:
+            try:
+                device_type_selection_line = build_device_config_line(div_id='device-type-selection-line',
+                                                                      device_name=device_name, device_type=hardware_configuration['devices'][device_name]['device_type'],
+                                                                      attribute="device_type",
+                                                                      input_object_id="device-type-selection-dropdown",
+                                                                      input_value=hardware_configuration['devices'][device_name]['device_type'])
+            except Exception:
+                raise PreventUpdate
+
+        return [
+            [device_type_selection_line]
+            + [html.Div(id="device-attributes-subpanel")]
+            + [html.Br()]
+            + interaction_buttons
+        ]
+
+    @app.callback(
+        inputs=[Input("route-select-dropdown", "value")],
+        output=[Output("route-config-panel", "children")],
+        state=[State("hardware-config-store", "data")]
+    )
+    def build_route_select_panel(device_name, hardware_configuration):
+        #a = 5
+        hardware_configuration = ControllerLibrary.UnpackHardwareConfiguration(hardware_configuration)
+
+        # route_panel_header = build_hardware_config_line(
+        #     "route-config-panel-header",
+        #     "Origin",
+        #     "Destination",
+        #     "Set new value",
+        # )
+
+        route_panel_header = html.Div(
+            id="route-config-panel-header",
+            children=[
+                html.Label("Segment No.", className="four columns"),
+                html.Label("Origin", className="four columns"),
+                html.Label("Destination", className="four columns")
+            #input
+            #html.Label(input, className="four columns"),
+            #html.Div(col3, className="four columns"),
+            ],
+            className="row"
+        )
+
+        interaction_buttons = [html.Br(), html.Div(
+            id="button-div",
+            children=[
+                # html.Button("Add Segment",
+                #                   id="add-route-segment-btn",
+                #                   className="hardware-config-tab-btn",
+                #                   n_clicks_timestamp=0),
+                      html.Button("Update Route",
+                                  id="update-route-btn",
+                                  className="update-route-btn",
+                                  disabled=False,
+                                  n_clicks_timestamp=0),
+                      ],
+            ),
+        ]
+
+        route_config_segments = []
+        for route_segment_ndx in range(len(hardware_configuration['routes'][device_name])):
+            destination_select_options = ['rpi'] + list(hardware_configuration['devices'].keys())
+            destination_select_options.remove(hardware_configuration['devices'][device_name]['name'])
+            if destination_select_options is None:
+                destination_select_options = [{'label': 'No Device Available', 'value': 'none'}]
+            else:
+                destination_select_options = [{'label':device,'value':device} for device in destination_select_options]
+            route_config_segments += [build_route_config_line(id="route-segment-line" + str(route_segment_ndx),
+                                                             segment_number=route_segment_ndx,
+                                                             label=hardware_configuration['routes'][device_name][route_segment_ndx][0],
+                                                             input=dcc.Dropdown(id="route-segment-" + str(route_segment_ndx),
+                                                                                options=destination_select_options,
+                                                                                className=None),
+                                                             className="four columns")]
+
+        # route_config_segments += [html.Div(
+        #     id="add-segment-row",
+        #     children=[
+        #         html.Button("Add Segment",
+        #                     id="add-route-segment-btn",
+        #                     className="hardware-config-tab-btn",
+        #                     n_clicks_timestamp=0),
+        #     #input
+        #     #html.Label(input, className="four columns"),
+        #     #html.Div(col3, className="four columns"),
+        #     ],
+        #     className="row",
+        # )]
+        # if device_name == "new_device":
+        #     interaction_buttons[0].children[1].disabled = True
+        #     device_type_selection_line = build_device_config_line(div_id='device-type-selection-line',
+        #                                                           device_name=device_name, device_type="Unknown",
+        #                                                           attribute="device_type",
+        #                                                           input_object_id="device-type-selection-dropdown")
+        #
+        # else:
+        #     try:
+        #         device_type_selection_line = build_device_config_line(div_id='device-type-selection-line',
+        #                                                               device_name=device_name, device_type=
+        #                                                               hardware_configuration['devices'][device_name][
+        #                                                                   'device_type'],
+        #                                                               attribute="device_type",
+        #                                                               input_object_id="device-type-selection-dropdown",
+        #                                                               input_value=
+        #                                                               hardware_configuration['devices'][device_name][
+        #                                                                   'device_type'])
+        #     except Exception:
+        #         raise PreventUpdate
+
+        return [[route_panel_header] + route_config_segments]
+        # return [
+        #     [device_type_selection_line]
+        #     + [html.Div(id="device-attributes-subpanel")]
+        #     + interaction_buttons
+        # ]
+
+    # @app.callback(
+    #     inputs=[Input("add-route-segment-btn", "n_clicks")],
+    #     output=[Output("route-select-dropdown", "value")],
+    #     state=[State("route-config-panel", "children"),
+    #            State("route-select-dropdown", "value"),
+    #            State("hardware-config-store", "data")]
+    # )
+    # def add_route_segment(button_clicks, route_config_panel, route, hardware_configuration):
+    #     if not button_clicks:
+    #         raise PreventUpdate
+    #     route_segments = 5
+    #
+    #     route_config_segments += [build_route_config_line(id="route-segment-line" + str(route_segment_ndx),
+    #                                                       segment_number=route_segment_ndx,
+    #                                                       label=hardware_configuration['routes'][device_name][
+    #                                                           route_segment_ndx][0],
+    #                                                       input=dcc.Dropdown(
+    #                                                           id="route-segment-" + str(route_segment_ndx),
+    #                                                           options=destination_select_options,
+    #                                                           className=None),
+    #                                                       className="four columns")]
+        # complete_route = []
+        # for route_segment_ndx in range(0, len(route_config_panel)):
+        #     panel_line_items = route_config_panel[route_segment_ndx]['props']
+        #     try:
+        #         if "route-segment-line" in panel_line_items['id']:
+        #             segment_row = panel_line_items['children']
+        #             route_destination = panel_line_items['children'][2]['props']['value']
+        #             complete_route += [route_destination]
+        #     except KeyError:
+        #         pass
+        # print(complete_route)
+            #route_segment = route_config_panel[route_segment_ndx]['props']['children']
+
+    def update_route():
+        complete_route = []
+        for route_segment_ndx in range(0, len(route_config_panel)):
+            panel_line_items = route_config_panel[route_segment_ndx]['props']
+            try:
+                if "route-segment-line" in panel_line_items['id']:
+                    segment_row = panel_line_items['children']
+                    route_destination = panel_line_items['children'][2]['props']['value']
+                    complete_route += [route_destination]
+            except KeyError:
+                pass
+        print(complete_route)
+        # route_segment = route_config_panel[route_segment_ndx]['props']['children']
+
+    @app.callback(
+        output=[Output("device-attributes-subpanel", "children")],
+        inputs=[Input("device-type-selection-dropdown", "value")],
+        state=[State("device-select-dropdown", "value"),
+               State("hardware-config-store", "data")]
+    )
+    def build_device_attributes_subpanel(device_type=None, device_name=None, hardware_configuration=None):
+        hardware_configuration = ControllerLibrary.UnpackHardwareConfiguration(hardware_configuration)
+        if device_type != None:
             return [
-                #device_config_panel + common_device_attributes
-                [device_panel_header, device_type_selection_line]
-                # [
-                #     # build_value_setter_toggle(
-                #     #     "value-setter-panel-toggle",
-                #     #     "Toggle",
-                #     #     state_dict[dd_select]["lcl"],
-                #     #     ud_lcl_input,
-                #     # ),
-                #     device_panel_header,
-                #     attribute_addition_line,
-                #     # build_value_setter_line(
-                #     #     "value-setter-panel-header",
-                #     #     "Parameter",
-                #     #     "Historical Value",
-                #     #     "Set new value",
-                #     # ),
-                # ]
-                + [build_port_config_line('device-config-line', port, key) for key in sorted(list(port.__dict__.keys()))]
-                + [attribute_addition_line]
+                #[build_device_config_line(div_id='device-config-line', device_name=device_name, device_type=device_type, attribute=key, input_object_id=device_type + '.' + key + '.' + ControllerLibrary.HAL.SUPPORTED_DEVICES[device_type][key]) for key in list(ControllerLibrary.HAL.SUPPORTED_DEVICES[device_type].keys())]
+                [build_device_config_line(div_id='device-config-line', device_name=device_name, device_type=device_type,
+                                          attribute=key, input_value=hardware_configuration['devices'][device_name][key] if device_name != 'new_device' else '', input_object_id=device_type + '.' + key + '.' +
+                                                                         ControllerLibrary.HAL.SUPPORTED_DEVICES[
+                                                                             device_type][key]) for key in
+                list(ControllerLibrary.HAL.SUPPORTED_DEVICES[device_type].keys())]
+                #+ [build_device_config_attribute_addition_line("add-device-attribute-line")]
             ]
         else:
-            return (
-                device_config_panel
-                # [
-                #     # build_value_setter_toggle(
-                #     #     "value-setter-panel-toggle",
-                #     #     "Toggle",
-                #     #     state_dict[dd_select]["lcl"],
-                #     #     ud_lcl_input,
-                #     # ),
-                #     device_panel_header,
-                #     attribute_addition_line
-                #     # build_value_setter_line(
-                #     #     "value-setter-panel-header",
-                #     #     "Parameter",
-                #     #     "Historical Value",
-                #     #     "Set new value",
-                #     # ),
-                # ]
-                + [build_port_config_line('port_line', port, key) for key in sorted(list(port.__dict__.keys()))],
-            )
+            return ([html.Label("Select Device Type...", className="four columns")])
+
+    # @app.callback(
+    #
+    # )
+    # def build_route_segments_subpanel():
+    #     pass
 
     # ====== Callbacks to update stored data via click =====
-    @app.callback(
-        output=Output("value-setter-store", "data"),
-        inputs=[Input("value-setter-set-btn", "n_clicks")],
-        state=[
-            State("metric-select-dropdown", "value"),
-            State("value-setter-store", "data"),
-            State("ud_usl_input", "value"),
-            State("ud_lsl_input", "value"),
-            State("ud_ucl_input", "value"),
-            State("ud_lcl_input", "value"),
-        ],
-    )
-    def set_value_setter_store(set_btn, param, data, usl, lsl, ucl, lcl):
-        if set_btn is None:
-            return data
-        else:
-            data[param]["usl"] = usl
-            data[param]["lsl"] = lsl
-            data[param]["ucl"] = ucl
-            data[param]["lcl"] = lcl
-
-            # Recalculate ooc in case of param updates
-            data[param]["ooc"] = populate_ooc(df[param], ucl, lcl)
-            return data
+    # @app.callback(
+    #     output=Output("value-setter-store", "data"),
+    #     inputs=[Input("value-setter-set-btn", "n_clicks")],
+    #     state=[
+    #         State("metric-select-dropdown", "value"),
+    #         State("value-setter-store", "data"),
+    #         State("ud_usl_input", "value"),
+    #         State("ud_lsl_input", "value"),
+    #         State("ud_ucl_input", "value"),
+    #         State("ud_lcl_input", "value"),
+    #     ],
+    # )
+    # def set_value_setter_store(set_btn, param, data, usl, lsl, ucl, lcl):
+    #     if set_btn is None:
+    #         return data
+    #     else:
+    #         data[param]["usl"] = usl
+    #         data[param]["lsl"] = lsl
+    #         data[param]["ucl"] = ucl
+    #         data[param]["lcl"] = lcl
+    #
+    #         # Recalculate ooc in case of param updates
+    #         data[param]["ooc"] = populate_ooc(df[param], ucl, lcl)
+    #         return data
 
     # @app.callback(
     #     #output=Output("port-setter-store", 'configuration'),
@@ -639,35 +827,98 @@ def InitializeFrontend():
     #
     #     pass
 
-    @app.callback(
-        output=Output("hardware-config-store", "data"),
-        inputs=[Input("update-port-btn", "n_clicks")],
-        state=[State("port-select-dropdown", "value"),
-               State("port-setter-panel", "children"),
-               State("hardware-config-store", "data")]
-    )
-    def update_port(button_clicks, port_name, port_setter_panel_items, current_hardware_config):
-        if button_clicks != None and port_name != None:
-            port = FrontendLibrary.lookup_port_by_name(port_name=port_name, configured_ports=configured_ports)
-            port = ControllerLibrary.Port()
-            for item in port_setter_panel_items:
-                if item['props']['id'] == 'port_line':
-                    data_line = item['props']['children']
-                    data_label = data_line[0]['props']['children']
-                    data_value = data_line[1]['props']['children']['props']['value']
-                    if data_value != None:
-                        setattr(port,data_label,data_value)
-                        #port_index = FrontendLibrary.lookup_port_index_in_hardware_configuration(port=port, port_configuration=current_hardware_config['ports'])
-            current_hardware_config['ports'][port.name] = port.TextSerialize()
-                        # if port_index >= 0:
-                        #     current_hardware_config['ports'][port_index] = port.Serialize()
-                        # else:
-                        #     current_hardware_config['ports'] += [port.Serialize()]
-        return current_hardware_config
-                #prop_name = prop['props']['children']
-            #print('updating')
+    # @app.callback(
+    #     output=Output("hardware-config-store", "data"),
+    #     inputs=[Input("update-port-btn", "n_clicks")],
+    #     state=[State("port-select-dropdown", "value"),
+    #            State("port-setter-panel", "children"),
+    #            State("hardware-config-store", "data")]
+    # )
+    # def update_port(button_clicks, port_name, port_setter_panel_items, current_hardware_config):
+    #     if button_clicks != None and port_name != None:
+    #         port = FrontendLibrary.lookup_port_by_name(port_name=port_name, configured_ports=configured_ports)
+    #         port = ControllerLibrary.Port()
+    #         for item in port_setter_panel_items:
+    #             if item['props']['id'] == 'port_line':
+    #                 data_line = item['props']['children']
+    #                 data_label = data_line[0]['props']['children']
+    #                 data_value = data_line[1]['props']['children']['props']['value']
+    #                 if data_value != None:
+    #                     setattr(port,data_label,data_value)
+    #                     #port_index = FrontendLibrary.lookup_port_index_in_hardware_configuration(port=port, port_configuration=current_hardware_config['ports'])
+    #         current_hardware_config['ports'][port.name] = port.TextSerialize()
+    #                     # if port_index >= 0:
+    #                     #     current_hardware_config['ports'][port_index] = port.Serialize()
+    #                     # else:
+    #                     #     current_hardware_config['ports'] += [port.Serialize()]
+    #     return current_hardware_config
+    #             #prop_name = prop['props']['children']
+    #         #print('updating')
+    #
+    #         #return {}
 
-            #return {}
+#State("hardware-config-store", "data"),
+#State("route-select-dropdown", "value"),
+#Input("add-route-segment-btn", "n_clicks_timestamp")
+#Input("update-route-btn", "n_clicks_timestamp")
+#Output("route-select-dropdown", "value")
+    @app.callback(
+        inputs=[Input("update-device-btn", "n_clicks_timestamp"),
+                Input("delete-device-btn", "n_clicks_timestamp"),
+                Input("add-route-segment-btn", "n_clicks_timestamp"),
+                Input("update-route-btn", "n_clicks_timestamp")],
+        output=[Output("hardware-config-store", "data"),
+                Output("device-select-dropdown", "options"),
+                Output("device-select-dropdown", "value"),
+                Output("route-select-dropdown", "options"),
+                Output("route-select-dropdown", "value")],
+        state=[State("hardware-config-store", "data"),
+               State("device-attributes-subpanel", "children"),
+               State("route-config-panel", "children"),
+               State("device-select-dropdown", "value"),
+               State("route-select-dropdown", "value"),
+               State("device-type-selection-line", "children")]
+    )
+    def update_hardware(update_button_click_timestamp, delete_button_click_timestamp, add_segment_button_click_timestamp, update_route_button_click_timestamp, hardware_configuration, configuration_panel_lines, route_panel_lines, device_name, route_name, device_type_dropdown_div):
+        ordered_timestamps = {update_button_click_timestamp: 'update_device',
+                              delete_button_click_timestamp: 'delete_device',
+                              add_segment_button_click_timestamp: 'add_segment',
+                              update_route_button_click_timestamp: 'update_route'}
+        button_clicked = ordered_timestamps[sorted(ordered_timestamps.keys(), reverse=True)[0]]
+        if button_clicked == 'update_device':
+            #if button_click != None:
+            hardware_configuration = ControllerLibrary.UnpackHardwareConfiguration(hardware_configuration)
+            device_type = device_type_dropdown_div[1]['props']['children']['props']['value']
+            device_definition = {'device_type': device_type}
+            for line in configuration_panel_lines:
+                if line['props']['id'] == 'device-config-line':
+                    input_object = line['props']['children'][1]['props']['children']['props']
+                    attribute_name = input_object['id'].split('.')[1]
+                    input_value = input_object['value']
+                    device_definition[attribute_name] = input_value
+            try:
+                hardware_configuration['devices'][device_definition['name']] = device_definition
+                hardware_configuration['routes'][device_definition['name']] = [(device_definition['name'], 'rpi')]
+            except Exception as e:
+                pass
+            #hardware_configuration['updates'] = hardware_configuration['updates'] + 1
+
+            # device_select_dropdown_options = [{"label": 'New Device...', "value": "new_device"}] + [
+            #     {"label": hardware_configuration['devices'][device]['name'], "value": hardware_configuration['devices'][device]['name']} for
+            #     device in hardware_configuration['devices'].keys()]
+            device_select_dropdown_options = FrontendLibrary.build_device_selector_dropdown_options_list(hardware_configuration)
+                # [{"label": 'New Device...', "value": "new_device"}] + [
+                # {"label": device + ' (' + hardware_configuration['devices'][device]['device_type'] + ')',
+                #  "value": device} for device
+                # in hardware_configuration['devices']]
+            return [hardware_configuration], device_select_dropdown_options, device_definition['name'], FrontendLibrary.build_route_selector_options_list(hardware_configuration), [route_name]
+        elif button_clicked == "delete_device":
+            raise PreventUpdate
+        elif button_clicked == "add_segment":
+            a=5
+        else:
+            raise PreventUpdate
+
 
     return app, cache#, server
 
@@ -795,312 +1046,151 @@ def init_value_setter_store():
 
 def init_hardware_config_store():
     return {'ports': {}, 'muxes': {}}
-# def build_hardware_config_tab2():
-#     return [
-#         # Manually select metrics
-#         html.Div(
-#             id="hardware-config-intro-container",
-#             # className='twelve columns',
-#             children=html.P(
-#                 "Set up devices connected to system."
-#             ),
-#         ),
-#         html.Div(
-#             id="port-menu",
-#             children=[
-#                 html.Div(
-#                     id="port-name-headers",
-#                     #className="two columns",
-#                     children=[
-#                         html.Label(id="port-name-entry-title", children="Port Name", className="two columns"),
-#                         html.Label(id="port-name-entry-title", children="Port Type", className="two columns"),
-#                     ],
-#                     className='row'
-#                 ),
-#                 html.Br(),
-#                 html.Div(
-#                     id="port-data-entry",
-#                     # className='five columns',
-#                     children=[
-#                         dcc.Input(
-#                             id="port{}-name-text".format("0"),
-#                             type="text",
-#                             placeholder="Port Name",
-#                             className="four columns",
-#                         ),
-#                         dcc.Dropdown(
-#                             id="port-select-dropdown",
-#                             options=list(
-#                                 {"label": port, "value": port} for port in ports
-#                             ),
-#                             value=ports[1],
-#                             className="four columns",
-#                         )
-#                     ],
-#                 ),
-#                 # html.Div(
-#                 #     id="port-select-menu",
-#                 #     # className='five columns',
-#                 #     children=[
-#                 #         html.Label(id="port-select-title", children="Port Type"),
-#                 #         html.Br(),
-#                 #         dcc.Dropdown(
-#                 #             id="port-select-dropdown",
-#                 #             options=list(
-#                 #                 {"label": port, "value": port} for port in ports
-#                 #             ),
-#                 #             value=ports[1],
-#                 #         ),
-#                 #     ],
-#                 # ),
-#                 html.Br(),
-#                 html.Div(
-#                     id="value-setter-menu",
-#                     # className='six columns',
-#                     children=[
-#                         html.Div(id="value-setter-panel"),
-#                         html.Br(),
-#                         html.Div(
-#                             id="button-div",
-#                             children=[
-#                                 html.Button("Update", id="value-setter-set-btn"),
-#                                 html.Button(
-#                                     "View current setup",
-#                                     id="value-setter-view-btn",
-#                                     n_clicks=0,
-#                                 ),
-#                             ],
-#                         ),
-#                         html.Div(
-#                             id="value-setter-view-output", className="output-datatable"
-#                         ),
-#                     ],
-#                 ),
-#             ],
-#         ),
-#     ]
 
-def build_hardware_config_tab():
+def build_hardware_config_tab(hardware_configuration={}):
     #available_devices = list({"label": device, "value": device} for device in ControllerLibrary.HAL.SUPPORTED_DEVICES)
+    hardware_configuration = ControllerLibrary.UnpackHardwareConfiguration(hardware_configuration)
+    device_selector_options = FrontendLibrary.build_device_selector_dropdown_options_list(hardware_configuration)
     return [
         # Manually select metrics
         html.Div(
             id="set-hardware-config-intro-container",
             # className='twelve columns',
-            children=[html.P(
-                "Configure Controller Ports, Devices, and Routes",
+            children=[
+                html.P(
+                "Configure Controller Ports, Devices, and Routes"),
+                html.Button(
+                    "Save Hardware Configuration to Disk",
+                    id="save-hardware-config-btn",
+                    n_clicks=0,
+                    className="hardware-config-tab-btn"),
+                html.Button(
+                    "Load Hardware Configuration to Controller",
+                    id="load-hardware-config-to-controller-btn",
+                    n_clicks=0,
+                    className="hardware-config-tab-btn"),
+            ],
+        ),
+
+        html.Div(id="device-config-section",
+                 children=[
+                html.Div(
+                    id="hardware-config-subheading",
+                    children=html.P("Devices")),
+
+                #Devices menu
+                html.Div(
+                    id="devices-menu",
+                    children=[
+                        html.Div(
+                            id="device-select-menu",
+                            children=[
+                                html.Label(id="device-select-title", children="Select Device"),
+                                html.Br(),
+                                dcc.Dropdown(
+                                    id="device-select-dropdown",
+                                    options=device_selector_options,
+                                    value=device_selector_options[0]['value']
+                                ),
+                            ],
+                        ),
+                        html.Div(
+                            id="device-config-menu",
+                            children=[
+                                html.Div(id="device-config-panel"),
+                                #html.Br(),
+                            ],
+                        ),
+                    ],
+                ),
+             ]
+         ),
+
+        html.Div(id="route-config-section",
+                 children=[
+                html.Div(id="hardware-config-subheading",
+                         children=html.P("Routing")),
+                html.Div(
+                    id="routing-menu",
+                    children=[
+                        html.Div(
+                            id="route-select-menu",
+                            children=[
+                                html.Label(id="route-select-title", children="Select Route"),
+                                html.Br(),
+                                dcc.Dropdown(
+                                    id="route-select-dropdown",
+                                    options=FrontendLibrary.build_route_selector_options_list(hardware_configuration=hardware_configuration)
+                                ),
+                                html.Br(),
+                                html.Button("Add Segment",
+                                            id="add-route-segment-btn",
+                                            className="hardware-config-tab-btn",
+                                            n_clicks_timestamp=0),
+                                html.Button("Update Route",
+                                            id="update-route-btn",
+                                            className="update-route-btn",
+                                            disabled=False,
+                                            n_clicks_timestamp=0),
+                                ]
+                        ),
+                        # html.Div(
+                        #     id="route-config-menu",
+                        #     children=[
+                        #         html.Div(id="route-config-panel"),
+                        #         # html.Br(),
+                        #         ],
+                        #     ),
+                        html.Div(id='configuration-table-container', children=[
+                            dt.DataTable(id='route-table',
+                                         columns=[{'name': "Origin", 'id': "origin"}, {'name': "Destination", 'id': "destination", "presentation": "dropdown"}],
+                                         data=[{"origin": 1, "destination": ""}],
+                                         style_cell={'padding': '5px',
+                                                     'color': 'black'},
+                                         style_header={
+                                             'backgroundColor': 'gray',
+                                             'fontWeight': 'bold'
+                                         },
+                                         editable=True,
+                                         dropdown={
+                                             'destination': {
+                                                 'options': [
+                                                     {'label': 'a', 'value': 'a'},
+                                                     {'label': 'b', 'value': 'b'}
+                                                 ]
+                                             }
+                                         }
+                                         )
+                        ])
+
+                        ]
+                    ),
+                     # html.Div(id='table-container', children=[
+                     #     dt.DataTable(id='route-table',
+                     #                  columns=[{'name': "col1", 'id': "col1"}, {'name': "col2", 'id': "col2"}],
+                     #                  data=[{"col1": 1, "col2": 2}, {"col1": 1, "col2": 2}],
+                     #                  style_cell={'padding': '5px',
+                     #                              'color': 'black'},
+                     #                  style_header={
+                     #                      'backgroundColor': 'gray',
+                     #                      'fontWeight': 'bold'
+                     #                  },
+                     #                  editable=True
+                     #                  )
+                     # ])
+                ]
             ),
-            html.Button(
-                "Load Hardware Configuration to Controller",
-                id="load-hardware-config-btn",
-                n_clicks=0,
-            )],
-        ),
-        html.Div(
-            id="hardware-config-subheading",
-            children=html.P("Devices"),
-        ),
-        #html.Br(),
+                                        # input
+                                        # html.Label(input, className="four columns"),
+                                        # html.Div(col3, className="four columns"),
+                                    #className="row",
 
-        #Devices menu
-        html.Div(
-            id="devices-menu",
-            children=[
-                html.Div(
-                    id="device-select-menu",
-                    # className='five columns',
-                    children=[
-                        html.Label(id="device-select-title", children="Define New Device"),
-                        html.Br(),
-                        dcc.Dropdown(
-                            id="device-select-dropdown",
-                            options=[{"label": 'New Device...', "value":"new_device"}] + [{"label": device, "value": device} for device
-                                                                         in ControllerLibrary.HAL.SUPPORTED_DEVICES]
-                            # list(
-                            #     {"label": device, "value": device} for device in
-                            #     ControllerLibrary.HAL.SUPPORTED_DEVICES
-                            # ),
-                            # value=params[1],
-                        ),
-                        html.Br(),
-                        html.Label(id="device-select-title", children="Modify Existing Device"),
-                        html.Br(),
-                        FrontendLibrary.build_port_selector_dropdown(),
-                        html.Br(),
-                        html.Div(
-                            id="button-div",
-                            children=[
-                                html.Button("Add Device", id="add-device-btn"),
-                            ],
-                        ),
-                    ],
-                ),
-                html.Div(
-                    id="device-config-menu",
-                    # className='six columns',
-                    children=[
-                        html.Div(id="device-config-panel"),
-                        html.Br(),
-                        html.Div(
-                            id="button-div",
-                            children=[
-                                html.Button("Update Device", id="update-device-btn"),
-                                # html.Button("Update Port", id="value-setter-set-btn"),
-                                # html.Button(
-                                #     "Load Hardware Configuration to Controller",
-                                #     id="load-hardware-config-btn",
-                                #     n_clicks=0,
-                                # ),
-                            ],
-                        ),
-                        # html.Div(
-                        #     id="value-setter-view-output", className="output-datatable"
-                        # ),
-                    ],
-                ),
-            ],
-        ),
 
-        # Ports menu
-        html.Div(
-            id="hardware-config-subheading",
-            children=html.P("Ports"),
-        ),
-        html.Div(
-            id="ports-menu",
-            children=[
-                html.Div(
-                    id="port-select-menu",
-                    # className='five columns',
-                    children=[
-                        html.Label(id="port-select-title", children="Modify Existing Port"),
-                        html.Br(),
-                        dcc.Dropdown(
-                            id="port-select-dropdown",
-                            options=list(
-                                {"label": port.name + ' (' + port.port_type + ')', "value": port.name} for port in configured_ports
-                            ),
-                            # value=params[1],
-                        ),
-                        html.Br(),
-                        # html.Label(id="port-select-title", children="Configure New Port"),
-                        # html.Br(),
-                        # FrontendLibrary.build_port_selector_dropdown(),
-                        # dcc.Dropdown(
-                        #     id="new-port-select-dropdown",
-                        #     options=list(
-                        #         {"label": port, "value": port} for port in ports
-                        #     ),
-                        #     #value=params[1],
-                        # ),
-                        html.Br(),
-                        html.Div(
-                            id="button-div",
-                            children=[
-                                html.Button("Add Port", id="add-port-btn"),
-                            ],
-                        ),
-                    ],
-                ),
-                html.Div(
-                    id="port-setter-menu",
-                    # className='six columns',
-                    children=[
-                        html.Div(id="port-setter-panel"),
-                        html.Br(),
-                        html.Div(
-                            id="button-div",
-                            children=[
-                                html.Button("Update Port", id="update-port-btn"),
-                                #html.Button("Update Port", id="value-setter-set-btn"),
-                                # html.Button(
-                                #     "Load Hardware Configuration to Controller",
-                                #     id="load-hardware-config-btn",
-                                #     n_clicks=0,
-                                # ),
-                            ],
-                        ),
-                        # html.Div(
-                        #     id="value-setter-view-output", className="output-datatable"
-                        #),
-                    ],
-                ),
-            ],
-        ),
-        html.Br(),
-        html.Div(id="hardware-config-subheading",
-                 children=html.P("Routing")),
-        html.Div(
-            id="routing-menu",
-            children=[
-                html.Div(
-                    id="route-select-menu",
-                    # className='five columns',
-                    children=[
-                        html.Label(id="route-select-title", children="Device Routes"),
-                        html.Br(),
-                        dcc.Dropdown(
-                            id="route-select-dropdown",
-                            options=list(
-                                {'label': port.name + ' (' + port.route[0]['origin'] + '-> ' + port.route[-1]['destination'] + ')', 'value': port.name} for port in configured_ports
-                                # {"label": port.name + ' (' + port.port_type + ')', "value": port.name} for port in
-                                # configured_ports
-                            ),
-                            # value=params[1],
-                        ),
-                        html.Br(),
-                        html.Label(id="route-select-title", children="Configure New Port"),
-                        html.Br(),
-                        FrontendLibrary.build_port_selector_dropdown(),
-                        # dcc.Dropdown(
-                        #     id="new-port-select-dropdown",
-                        #     options=list(
-                        #         {"label": port, "value": port} for port in ports
-                        #     ),
-                        #     #value=params[1],
-                        # ),
-                        html.Br(),
-                        html.Div(
-                            id="button-div",
-                            children=[
-                                html.Button("Add Port", id="add-port-btn"),
-                            ],
-                        ),
-                    ],
-                ),
-                html.Div(
-                    id="port-setter-menu",
-                    # className='six columns',
-                    children=[
-                        html.Div(id="port-setter-panel"),
-                        html.Br(),
-                        html.Div(
-                            id="button-div",
-                            children=[
-                                html.Button("Update Port", id="update-port-btn"),
-                                # html.Button("Update Port", id="value-setter-set-btn"),
-                                # html.Button(
-                                #     "Load Hardware Configuration to Controller",
-                                #     id="load-hardware-config-btn",
-                                #     n_clicks=0,
-                                # ),
-                            ],
-                        ),
-                        # html.Div(
-                        #     id="value-setter-view-output", className="output-datatable"
-                        # ),
-                    ],
-                ),
-            ],
-        ),
-        # html.Div(
-        #     id="set-hardware-route-intro-container",
-        #     # className='twelve columns',
-        #     children=html.P(
-        #         "Configure Device Routing"
-        #     ),
-        # ),
-        html.Div(id='hardware_config_button_clicks', children='update_port:0|add_port:0', style={'display': 'none'})
+
+        html.Div(id='hardware_config_button_clicks', children='update_port:0|add_port:0', style={'display': 'none'}),
+        html.Div(id='device-update-signal', children=0, style={'display': 'none'}),
+        html.Div(id="dummy_output", children=0, style={'display': 'none'}),
+        html.Div(id="dummy_output2", children=0, style={'display': 'none'})
     ]
 
 def build_controller_settings_tab():
@@ -1228,7 +1318,7 @@ def build_tab_1():
     ]
 
 
-def build_value_setter_line(line_num, label, value, col3):
+def build_hardware_config_line(line_num, label, value, col3):
     return html.Div(
         id=line_num,
         children=[
@@ -1238,6 +1328,39 @@ def build_value_setter_line(line_num, label, value, col3):
         ],
         className="row",
     )
+
+def build_route_config_line(id=None, segment_number=0, label=None, input=None, className="four columns"):
+    input.className = className
+    return html.Div(
+        id=id,
+        children=[
+            html.Label(str(segment_number), className=className),
+            html.Label(label, className=className),
+            input
+            #html.Label(input, className="four columns"),
+            #html.Div(col3, className="four columns"),
+        ],
+        className="row",
+    )
+
+def build_route_segments_list(device_name=None, consumed_devices=None, hardware_configuration=None):
+    route_config_segments = []
+    for route_segment_ndx in range(len(hardware_configuration['routes'][device_name])):
+        destination_select_options = ['rpi'] + list(hardware_configuration['devices'].keys())
+        destination_select_options.remove(hardware_configuration['devices'][device_name]['name'])
+        if destination_select_options is None:
+            destination_select_options = [{'label': 'No Device Available', 'value': 'none'}]
+        else:
+            destination_select_options = [{'label': device, 'value': device} for device in destination_select_options]
+        route_config_segments += [build_route_config_line(id="route-segment-line" + str(route_segment_ndx),
+                                                          segment_number=route_segment_ndx,
+                                                          label=hardware_configuration['routes'][device_name][
+                                                              route_segment_ndx][0],
+                                                          input=dcc.Dropdown(
+                                                              id="route-segment-" + str(route_segment_ndx),
+                                                              options=destination_select_options,
+                                                              className=None),
+                                                          className="four columns")]
 
 def build_device_config_attribute_addition_line(line_num, device_type=None):#, label, value, col3):
     if device_type == None:
@@ -1279,19 +1402,24 @@ def build_port_config_line(line_num, port, attribute):
         className="row",
     )
 
-def build_device_config_line(div_id=None, device=None, attribute=None, input_object_id=None):
-    if device == "new_device":
+def build_device_config_line(div_id=None, device_name=None, device_type=None, attribute=None, input_object_id=None, input_value=None):
+    if attribute == "device_type":
         input_object_type = ControllerLibrary.HAL.COMMON_DEVICE_ATTRIBUTES[attribute]
-        input_value = None
     else:
-        device = FrontendLibrary.lookup_device_by_name(device, configured_devices)
-        input_object_type = ControllerLibrary.HAL.SUPPORTED_DEVICES[device][attribute]
-        input_value = getattr(device, attribute)
+        input_object_type = ControllerLibrary.HAL.SUPPORTED_DEVICES[device_type][attribute]
+
+    if device_name == "new_device":
+        #input_object_type = ControllerLibrary.HAL.COMMON_DEVICE_ATTRIBUTES[attribute]
+        input_value = None
+    # else:
+    #     #device = FrontendLibrary.lookup_device_by_name(device, configured_devices)
+    #     #input_object_type = ControllerLibrary.HAL.SUPPORTED_DEVICES[device_type][attribute]
+    #     input_value = "ADC"
 
     if input_object_type == 'text':
         input_object = dcc.Input(value=input_value, debounce=True)
     elif input_object_type == 'device_type_dropdown':
-        input_object = FrontendLibrary.build_device_selector_dropdown(value=input_value)#, PORT_TYPES=ports)
+        input_object = FrontendLibrary.build_device_type_selector_dropdown(value=input_value)#, PORT_TYPES=ports)
     elif input_object_type == 'address':
         input_object = FrontendLibrary.build_pin_selector_dropdown(value=input_value)#, PORT_TYPES=ports)
     else:
@@ -1924,7 +2052,7 @@ def update_count(interval, col, data):
 
     return str(total_count + 1), ooc_percentage_str, ooc_grad_val, color
 
-def SetAppLayout(app=None):
+def SetAppLayout(app=None, hardware_configuration=None):
     app.layout = html.Div(
         id="big-app-container",
         children=[
@@ -1944,7 +2072,7 @@ def SetAppLayout(app=None):
                 ],
             ),
             dcc.Store(id="value-setter-store", data=init_value_setter_store()),
-            dcc.Store(id="hardware-config-store", data=init_hardware_config_store()),
+            dcc.Store(id="hardware-config-store", data=hardware_configuration),
             dcc.Store(id="n-interval-stage", data=50),
             generate_modal(),
         ],

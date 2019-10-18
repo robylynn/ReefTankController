@@ -7,10 +7,18 @@ GPIO_PINS = ['GPIO' + str(ndx) for ndx in range(2, 28)]
 
 #COMMON_DEVICE_ATTRIBUTES = [{'name': 'text'}, {'device_type': 'device_type_dropdown'}]
 COMMON_DEVICE_ATTRIBUTES = {'name': 'text', 'device_type': 'device_type_dropdown'}
-SUPPORTED_DEVICES = {'Sensor': {}, 'Liquid Valve': {}, 'Gas Valve': {}, 'Motor Controller': {}, 'Light': {}, 'I2C Multiplexer': {}, 'IO Multiplexer': {'address': 'text'}, 'ADC': {}, 'SSR': {}, 'MOSFET': {}}
+SUPPORTED_DEVICES = {'Sensor': {}, 'Liquid Valve': {}, 'Gas Valve': {}, 'Motor Controller': {"protocol": "text"}, 'Light': {}, 'I2C Multiplexer': {"input_address": "text"}, 'IO Multiplexer': {'address': 'text'}, 'ADC': {}, 'SSR': {'signel_type': "port_type_dropdown"}, 'MOSFET': {}}
 for device_key in SUPPORTED_DEVICES.keys():
+    supported_device_attributes = SUPPORTED_DEVICES[device_key]
+    #complete_device_attributes = {}
     for common_key in COMMON_DEVICE_ATTRIBUTES.keys():
-        SUPPORTED_DEVICES[device_key][common_key] = COMMON_DEVICE_ATTRIBUTES[common_key]
+        if common_key != "device_type":
+            #complete_device_attributes[common_key] = COMMON_DEVICE_ATTRIBUTES[common_key]
+            supported_device_attributes[common_key] = COMMON_DEVICE_ATTRIBUTES[common_key]
+            #SUPPORTED_DEVICES[device_key][common_key] = COMMON_DEVICE_ATTRIBUTES[common_key]
+    #[complete_device_attributes[key] = supported_device_attributes[key] for key in supported_device_attributes.keys()]
+    #complete_device_attributes.update(supported_device_attributes)
+    SUPPORTED_DEVICES[device_key] = supported_device_attributes
 #SUPPORTED_DEVICES = [{key: COMMON_DEVICE_ATTRIBUTES + SUPPORTED_DEVICES[key]} for key in SUPPORTED_DEVICES.keys()]
 
 
