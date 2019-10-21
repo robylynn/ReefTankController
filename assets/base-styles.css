@@ -35,6 +35,8 @@
 /* Grid
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 
+@import url('https://fonts.googleapis.com/css?family=Roboto+Slab&display=swap');
+
 /* For devices larger than 400px */
 @media (min-width: 400px) {
   .container {
@@ -483,7 +485,7 @@ table {
 
 th,
 td {
-  padding: 12px 15px;
+  padding: 8px 8px 8px 8px;
   text-align: left;
   border-bottom: 1px solid #E1E1E1;
 }

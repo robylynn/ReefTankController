@@ -37,6 +37,17 @@ def build_device_type_selector_dropdown(id="device-type-select-dropdown", value=
                         value=value,
                         )
 
+def build_driver_type_selector_dropdown(id="driver-select-dropdown", value=None, device_type=None, driver_types=HAL.SUPPORTED_DEVICES):
+    if device_type != '' and device_type != None:
+        supported_drivers = HAL.INSTALLED_DRIVERS[device_type]
+    else:
+        supported_drivers = []
+    return dcc.Dropdown(id=id,
+                        options=list({"label": driver, "value": driver} for driver in supported_drivers),
+                        #value=list({"label": value, "value": value}),
+                        value=value,
+                        )
+
 def build_pin_selector_dropdown(value=None, GPIO_pins=HAL.GPIO_PINS):
     return dcc.Dropdown(id="new-port-select-dropdown",
                         options=list({"label": pin, "value": pin} for pin in GPIO_pins),
@@ -44,11 +55,11 @@ def build_pin_selector_dropdown(value=None, GPIO_pins=HAL.GPIO_PINS):
                         value=value
                         )
 
-def build_complete_attribute_option_list():
-    combined_attribute_keys = []
-    for device_type in HAL.SUPPORTED_DEVICES.keys():
-        combined_attribute_keys += list(HAL.SUPPORTED_DEVICES[device_type].keys())
-    return sorted(list(set((combined_attribute_keys))))
+# def build_complete_attribute_option_list():
+#     combined_attribute_keys = []
+#     for device_type in HAL.SUPPORTED_DEVICES.keys():
+#         combined_attribute_keys += list(HAL.SUPPORTED_DEVICES[device_type].keys())
+#     return sorted(list(set((combined_attribute_keys))))
 
 def lookup_port_by_name(port_name=None, configured_ports=None):
     for port in configured_ports:

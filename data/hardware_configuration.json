@@ -1,53 +1,54 @@
-[
-    {
-        "updates": 4,
-        "devices": {
-            "HEATER_SSR": {
-                "name": "HEATER_SSR",
-                "signel_type": "DO",
-                "device_type": "SSR"
-            },
-            "I2C_Multiplexer_1": {
-                "name": "I2C_Multiplexer_1",
-                "input_address": "7",
-                "device_type": "I2C Multiplexer"
-            },
-            "IO_Multiplexer_1": {
-                "address": "0x06",
-                "name": "IO_Multiplexer_1",
-                "device_type": "IO Multiplexer"
-            },
-            "7": {
-                "name": "7",
-                "input_address": "I2C_Multiplexer_1",
-                "device_type": "I2C Multiplexer"
-            }
+{
+    "devices": {
+        "I2C_Multiplexer_1": {
+            "driver": "i2c",
+            "input_address": "7",
+            "name": "I2C_Multiplexer_1",
+            "device_type": "I2C Multiplexer"
         },
-        "routes": {
-            "HEATER_SSR": [
-                [
-                    "HEATER_SSR",
-                    "rpi"
-                ]
-            ],
-            "I2C_Multiplexer_1": [
-                [
-                    "I2C_Multiplexer_1",
-                    "rpi"
-                ]
-            ],
-            "IO_Multiplexer_1": [
-                [
-                    "IO_Multiplexer_1",
-                    "rpi"
-                ]
-            ],
-            "7": [
-                [
-                    "7",
-                    "rpi"
-                ]
-            ]
+        "rpi": {
+            "address": "192.168.1.1",
+            "name": "rpi",
+            "driver": "RPi",
+            "device_type": "Main Controller"
+        },
+        "7": {
+            "driver": "afsdgdfg",
+            "input_address": "I2C_Multiplexer_1",
+            "name": "7",
+            "device_type": "I2C Multiplexer"
+        },
+        "IO_Multiplexer_1": {
+            "device_type": "IO Multiplexer",
+            "driver": "abfd",
+            "name": "IO_Multiplexer_1",
+            "address": "0x06"
+        },
+        "HEATER_SSR": {
+            "signel_type": "DO",
+            "driver": "ab",
+            "name": "HEATER_SSR",
+            "device_type": "SSR"
         }
+    },
+    "updates": 4,
+    "routes": {
+        "I2C_Multiplexer_1": [
+            "rpi"
+        ],
+        "rpi": [
+            "",
+            "",
+            ""
+        ],
+        "7": [
+            "rpi"
+        ],
+        "IO_Multiplexer_1": [
+            "rpi"
+        ],
+        "HEATER_SSR": [
+            "IO_Multiplexer_1"
+        ]
     }
-]
+}
