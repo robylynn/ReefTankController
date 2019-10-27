@@ -2,13 +2,15 @@ import dash_core_components as dcc
 import HAL
 import os
 
+import Statics
+
 CACHE_CONFIG = {
     # try 'filesystem' if you don't want to setup redis
     'CACHE_TYPE': 'redis',
     'CACHE_REDIS_URL': os.environ.get('REDIS_URL', 'redis://localhost:6379')
 }
 
-def build_port_selector_dropdown(value=None, port_types=HAL.PORT_TYPES):
+def build_port_selector_dropdown(value=None, port_types=Statics.PORT_TYPES):
     return dcc.Dropdown(id="new-port-select-dropdown",
                         options=list({"label": port, "value": port} for port in port_types),
                         #value=list({"label": value, "value": value}),
@@ -26,20 +28,20 @@ def build_device_selector_dropdown_options_list(hardware_configuration={}):
     #                     )
 
 def build_route_selector_options_list(hardware_configuration={}):
-    return [{'label': hardware_configuration['devices'][device]['name'] + ' (' + str(
+    return [{'label': hardware_configuration['devices'][device]['name'] + ' (' + hardware_configuration['devices'][device]['device_type'] + ', ' + str(
         len(hardware_configuration['routes'][hardware_configuration['devices'][device]['name']])) + ' segment(s))',
             'value': hardware_configuration['devices'][device]['name']} for device in hardware_configuration['devices'].keys()]
 
-def build_device_type_selector_dropdown(id="device-type-select-dropdown", value=None, device_types=HAL.SUPPORTED_DEVICES):
+def build_device_type_selector_dropdown(id="device-type-select-dropdown", value=None, device_types=Statics.SUPPORTED_DEVICES):
     return dcc.Dropdown(id=id,
                         options=list({"label": device, "value": device} for device in sorted(list(device_types.keys()))),
                         #value=list({"label": value, "value": value}),
                         value=value,
                         )
 
-def build_driver_type_selector_dropdown(id="driver-select-dropdown", value=None, device_type=None, driver_types=HAL.SUPPORTED_DEVICES):
+def build_driver_type_selector_dropdown(id="driver-select-dropdown", value=None, device_type=None, driver_types=Statics.SUPPORTED_DEVICES):
     if device_type != '' and device_type != None:
-        supported_drivers = HAL.INSTALLED_DRIVERS[device_type]
+        supported_drivers = Statics.INSTALLED_DRIVERS[device_type]
     else:
         supported_drivers = []
     return dcc.Dropdown(id=id,
@@ -48,7 +50,7 @@ def build_driver_type_selector_dropdown(id="driver-select-dropdown", value=None,
                         value=value,
                         )
 
-def build_pin_selector_dropdown(value=None, GPIO_pins=HAL.GPIO_PINS):
+def build_pin_selector_dropdown(value=None, GPIO_pins=Statics.GPIO_PINS):
     return dcc.Dropdown(id="new-port-select-dropdown",
                         options=list({"label": pin, "value": pin} for pin in GPIO_pins),
                         #value=list({"label": value, "value": value}),

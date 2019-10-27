@@ -1,54 +1,59 @@
 {
-    "devices": {
-        "I2C_Multiplexer_1": {
-            "driver": "i2c",
-            "input_address": "7",
-            "name": "I2C_Multiplexer_1",
-            "device_type": "I2C Multiplexer"
-        },
-        "rpi": {
-            "address": "192.168.1.1",
-            "name": "rpi",
-            "driver": "RPi",
-            "device_type": "Main Controller"
-        },
-        "7": {
-            "driver": "afsdgdfg",
-            "input_address": "I2C_Multiplexer_1",
-            "name": "7",
-            "device_type": "I2C Multiplexer"
-        },
-        "IO_Multiplexer_1": {
-            "device_type": "IO Multiplexer",
-            "driver": "abfd",
-            "name": "IO_Multiplexer_1",
-            "address": "0x06"
-        },
-        "HEATER_SSR": {
-            "signel_type": "DO",
-            "driver": "ab",
-            "name": "HEATER_SSR",
-            "device_type": "SSR"
-        }
-    },
-    "updates": 4,
     "routes": {
-        "I2C_Multiplexer_1": [
-            "rpi"
+        "IO_Multiplexer_1": [
+            "rpi",
+            "HEATER_SSR",
+            "Tfgvhu"
         ],
         "rpi": [
             "",
             "",
             ""
         ],
-        "7": [
+        "Tfgvhu": [
+            ""
+        ],
+        "I2C_Multiplexer_1": [
             "rpi"
         ],
-        "IO_Multiplexer_1": [
+        "7": [
             "rpi"
         ],
         "HEATER_SSR": [
             "IO_Multiplexer_1"
         ]
+    },
+    "updates": 4,
+    "devices": {
+        "IO_Multiplexer_1": {
+            "driver": "abfd",
+            "address": "0x06",
+            "device_type": "IO Multiplexer",
+            "name": "IO_Multiplexer_1"
+        },
+        "rpi": {
+            "driver": "RPi",
+            "address": "192.168.1.1",
+            "device_type": "Main Controller",
+            "name": "rpi"
+        },
+        "Tfgvhu": {
+            "driver": "zetlight_lancia2",
+            "address": "Fhuuy",
+            "device_type": "Light Controller",
+            "name": "Tfgvhu"
+        },
+        "I2C_Multiplexer_1": {
+            "driver": "i2c",
+            "device_type": "I2C Multiplexer",
+            "input_address": "7",
+            "name": "I2C_Multiplexer_1"
+        },
+        "HEATER_SSR": {
+            "signel_type": "DO",
+            "driver": "ab",
+            "device_type": "SSR",
+            "name": "HEATER_SSR"
+        }
     }
 }

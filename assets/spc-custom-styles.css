@@ -253,7 +253,19 @@ body {
   height: 100%;
 }
 
+/*
 #card-1, #card-2, #utility-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+*/
+
+[id^="card-"] {
   display: flex;
   flex-direction: column;
   justify-content: space-evenly;
@@ -265,15 +277,26 @@ body {
 
 #card-1 {
   margin-bottom: 3rem;
+  display: flex;
+  flex-direction: row;
 }
 
-#utility-card {
+#card-utility {
   height: 4rem !important;
   margin-top: 2rem;
 }
 
 #stop-button > div > button:hover {
   color: #91dfd2 !important;
+}
+
+.double-gauge {
+  width: 50%;
+  align-items: center;
+}
+
+.double-gauge > P {
+  text-align: center;
 }
 
 /* Tab1 content
@@ -624,7 +647,7 @@ body {
   border-right: #1E2130 solid 0.8rem;
   flex: 1 1;
   padding: 2rem;
-  max-width: 25%;
+  max-width: 35%;
 }
 
 #operator-led {

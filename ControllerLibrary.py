@@ -4,8 +4,8 @@ import HAL
 #from collections import OrderedDict
 
 #CONTROLLER_DATA_PATH =
-DATA_PATH = "C:\\Users\\robyl_000\\Documents\\Projects\\Aquarium\\Software\\ReefTankController\\data\\"
-EMPTY_HARDWARE_CONFIGURATION = {'devices': {}, 'routes': {}, 'updates': 0}
+from Statics import DATA_PATH, EMPTY_HARDWARE_CONFIGURATION
+
 
 class Port():
     def __init__(self, **kwargs):#name='empty_port', port_type='DO', signal0_pin=None, signal1_pin=None):
@@ -45,10 +45,6 @@ class Device():
     def TextSerialize(self):
         return base64.b64encode(pickle.dumps(self)).decode()
 
-class TemperatureController(Thread):
-    def __init__(self, sample_rate = 1):
-        self.sample_rate = sample_rate
-
 def InitializeComms():
     HAL.InitializeI2C(1)
     HAL.Initialize1Wire()
@@ -58,14 +54,14 @@ class MainStateMachine():
     def __init__(self):
         pass
 
-def LoadHardwareConfiguration(data_path = DATA_PATH, configuration_file="hardware_configuration.json"):
+def LoadHardwareConfiguration(data_path=DATA_PATH, configuration_file="hardware_configuration.json"):
     try:
         with open(data_path + configuration_file, 'r') as fh:
             return UnpackHardwareConfiguration(json.load(fh))
     except FileNotFoundError:
         return EMPTY_HARDWARE_CONFIGURATION
 
-def SaveHardwareConfiguration(data_path = DATA_PATH, configuration_file="hardware_configuration.json", hardware_configuration={}):
+def SaveHardwareConfiguration(data_path=DATA_PATH, configuration_file="hardware_configuration.json", hardware_configuration={}):
     with open(data_path + configuration_file, 'w') as fh:
         json.dump(hardware_configuration, fh, indent=4)
         #configuration = fh.readlines()

@@ -18,23 +18,25 @@ import ControllerLibrary
 import FrontendLibrary
 from flask_caching import Cache
 #import redis
+import Statics
 
 APP_PATH = str(pathlib.Path(__file__).parent.resolve())
 df = pd.read_csv(os.path.join(APP_PATH, os.path.join("data", "spc_data.csv")))
 
 params = list(df)
 max_length = len(df)
-subsystems = ['Temperature Controller', 'High Side Pressure Controller', 'Calcium Reactor Controller', 'O3 Reactor Controller', 'Light Controller']
+#params = ['Temperature', 'Low Side Pressure', 'High Side Pressure', 'pH', 'ORP', 'EC', 'Water Level', 'Flow']
+#subsystems = ['Temperature Controller', 'High Side Pressure Controller', 'Calcium Reactor Controller', 'O3 Reactor Controller', 'Light Controller']
 
 #ports = ['Digital Output', 'Digital Input', 'Analog Output', 'Analog Input', 'I2C Port', 'TTL Serial Port', 'RS-485 Port']
 #configured_ports = [{'name': 'Heater_1_SSR_Port', 'type': 'DO', 'signal0_pin': 'GPIO0', 'signal1_pin': None, 'power_pin': '5V'}, {'name': 'Heater_2_SSR_Port', 'type': 'DO', 'signal0_pin': 'GPIO1', 'signal1_pin': None, 'power_pin': '5V'}]
-configured_ports = [ControllerLibrary.Port(name='Heater_1_SSR_Port', port_type='DO', signal0_pin='GPIO0'),
-                    ControllerLibrary.Port(name='Heater_2_SSR_Port', port_type='DO', signal0_pin='GPIO1'),
-                    ControllerLibrary.Port(name='Return_Pump_Serial_Port', port_type='TTL_Serial', signal0_pin='GPIO2', signal1_pin='GPIO3')]
-
-configured_devices = [ControllerLibrary.Device(name='Heater_1_SSR', port_type='DO', signal0_pin='GPIO0'),
-                      ControllerLibrary.Device(name='Heater_2_SSR', port_type='DO', signal0_pin='GPIO1'),
-                      ControllerLibrary.Device(name='Return_Pump_VFD', port_type='TTL_Serial', signal0_pin='GPIO2', signal1_pin='GPIO3')]
+# configured_ports = [ControllerLibrary.Port(name='Heater_1_SSR_Port', port_type='DO', signal0_pin='GPIO0'),
+#                     ControllerLibrary.Port(name='Heater_2_SSR_Port', port_type='DO', signal0_pin='GPIO1'),
+#                     ControllerLibrary.Port(name='Return_Pump_Serial_Port', port_type='TTL_Serial', signal0_pin='GPIO2', signal1_pin='GPIO3')]
+#
+# configured_devices = [ControllerLibrary.Device(name='Heater_1_SSR', port_type='DO', signal0_pin='GPIO0'),
+#                       ControllerLibrary.Device(name='Heater_2_SSR', port_type='DO', signal0_pin='GPIO1'),
+#                       ControllerLibrary.Device(name='Return_Pump_VFD', port_type='TTL_Serial', signal0_pin='GPIO2', signal1_pin='GPIO3')]
 
 #pins = ['GPIO0', 'GPIO1', 'DGND']
 
@@ -67,7 +69,7 @@ ud_porttype_input = dcc.Input(
 )
 
 
-def InitializeFrontend(hardware_configuration=None, system_manager=None):
+def InitializeFrontend(hardware_configuration=None, system_manager=None, synchronizer=None):
     app = dash.Dash(
         __name__,
         meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1"}],
@@ -266,6 +268,10 @@ def InitializeFrontend(hardware_configuration=None, system_manager=None):
     def update_device_config_dropdowns(device_name, hardware_configuration):
         hardware_configuration = ControllerLibrary.UnpackHardwareConfiguration(hardware_configuration)
 
+        if device_name == None:
+            #raise PreventUpdate
+            return build_device_config_panel(None, hardware_configuration) + [None]
+
         device_table_data = []
         if device_name == "new_device":
             device_type = ""
@@ -301,19 +307,21 @@ def InitializeFrontend(hardware_configuration=None, system_manager=None):
         #device_type = hardware_configuration['devices'][device_name]['device_type']
         if device_name != 'new_device' and device_name != None:
             driver = hardware_configuration['devices'][device_name]['driver']
-            for attr in ControllerLibrary.HAL.SUPPORTED_DEVICES[device_type]:
-                if ControllerLibrary.HAL.DEVICE_ATTRIBUTE_TYPES[attr] == 'text' and attr in hardware_configuration['devices'][device_name].keys():
+            for attr in Statics.SUPPORTED_DEVICES[device_type]:
+                if Statics.DEVICE_ATTRIBUTE_TYPES[attr] == 'text' and attr in hardware_configuration['devices'][device_name].keys():
                     device_table_data += [{"attribute_name": attr,
                                            "attribute_value": hardware_configuration['devices'][device_name][attr]}]
             driver_options = [{'label': driver, 'value': driver} for driver in
-                              ControllerLibrary.HAL.INSTALLED_DRIVERS[device_type]]
-        elif device_type != '':
-            driver = ControllerLibrary.HAL.INSTALLED_DRIVERS[device_type][0]
-            for attr in ControllerLibrary.HAL.SUPPORTED_DEVICES[device_type]:
-                if ControllerLibrary.HAL.DEVICE_ATTRIBUTE_TYPES[attr] == 'text':
+                              Statics.INSTALLED_DRIVERS[device_type]]
+        elif device_type != '' and device_type != None:
+            if device_type == None:
+                pass
+            driver = Statics.INSTALLED_DRIVERS[device_type][0]
+            for attr in Statics.SUPPORTED_DEVICES[device_type]:
+                if Statics.DEVICE_ATTRIBUTE_TYPES[attr] == 'text':
                     device_table_data += [{"attribute_name": attr,
                                            "attribute_value": ''}]
-                driver_options = [{'label': driver, 'value': driver} for driver in ControllerLibrary.HAL.INSTALLED_DRIVERS[device_type]]
+                driver_options = [{'label': driver, 'value': driver} for driver in Statics.INSTALLED_DRIVERS[device_type]]
         else:
             raise PreventUpdate
 
@@ -420,6 +428,9 @@ def InitializeFrontend(hardware_configuration=None, system_manager=None):
         state=[State("hardware-config-store", "data")]
     )
     def update_route_select_table(selected_route, hardware_configuration):
+        if selected_route == None:
+            raise PreventUpdate
+
         hardware_configuration = ControllerLibrary.UnpackHardwareConfiguration(hardware_configuration)
         #pass
         #data = []
@@ -427,14 +438,14 @@ def InitializeFrontend(hardware_configuration=None, system_manager=None):
         #     data += [{"route_segment": str(route_segment_ndx), "endpoint": hardware_configuration['routes'][selected_route][route_segment_ndx]}]
         data = [{"segment_index": str(route_segment_ndx),"endpoint": hardware_configuration['routes'][selected_route][route_segment_ndx]} for route_segment_ndx in range(0, len(hardware_configuration['routes'][selected_route]))]
         #options = {'endpoint': {'options': [{'label': hardware_configuration['devices'][device]['name'], 'value': hardware_configuration['devices'][device]['name']} for device in hardware_configuration['devices'].keys()]}}
-        options2 = {'endpoint': {'options': [{'label': "Raspberry Pi", 'value': 'rpi'}] + \
-                                           [{'label': hardware_configuration['devices'][device]['name'],
-                                             'value': hardware_configuration['devices'][device]['name']} for device in
-                                            hardware_configuration['devices'].keys()]}}
+        # options2 = {'endpoint': {'options': [{'label': "Raspberry Pi", 'value': 'rpi'}] + \
+        #                                    [{'label': hardware_configuration['devices'][device]['name'],
+        #                                      'value': hardware_configuration['devices'][device]['name']} for device in
+        #                                     hardware_configuration['devices'].keys()]}}
         options = {'endpoint': {'options': []}}
         for device in hardware_configuration['devices'].keys():
             device_name = hardware_configuration['devices'][device]['name']
-            if device_name != selected_route and device_name not in hardware_configuration['routes'][selected_route]:
+            if device_name != selected_route:# and device_name not in hardware_configuration['routes'][selected_route]:
                 options['endpoint']['options'] += [{'label': hardware_configuration['devices'][device]['name'], 'value': hardware_configuration['devices'][device]['name']}]
         #options['endpoint']['options']}}
         return data, options
@@ -454,12 +465,12 @@ def InitializeFrontend(hardware_configuration=None, system_manager=None):
     #     print(complete_route)
     #     # route_segment = route_config_panel[route_segment_ndx]['props']['children']
 
-    @app.callback(
-        output=[Output("device-attributes-subpanel", "children")],
-        inputs=[Input("device-type-selection-dropdown", "value")],
-        state=[State("device-select-dropdown", "value"),
-               State("hardware-config-store", "data")]
-    )
+    # @app.callback(
+    #     output=[Output("device-attributes-subpanel", "children")],
+    #     inputs=[Input("device-type-selection-dropdown", "value")],
+    #     state=[State("device-select-dropdown", "value"),
+    #            State("hardware-config-store", "data")]
+    #)
     # def build_device_attributes_subpanel(device_type=None, device_name=None, hardware_configuration=None):
     #     hardware_configuration = ControllerLibrary.UnpackHardwareConfiguration(hardware_configuration)
     #     if device_type != None:
@@ -742,52 +753,6 @@ def InitializeFrontend(hardware_configuration=None, system_manager=None):
     def update_output(value):
         return 'The switch is {}.'.format(value)
 
-    # @app.callback(
-    #     inputs=[Input("update-port-btn", "n_clicks")],
-    #     output=Output("hardware_config_button_clicks", "children"),
-    #     state=[State("hardware_config_button_clicks", "children")]
-    # )
-    # def update_hardware_config_button_clicks(update_port_button_num_clicks, prev_clicks):
-    #     #return
-    #     if update_port_button_num_clicks != None:
-    #
-    #     pass
-
-    # @app.callback(
-    #     output=Output("hardware-config-store", "data"),
-    #     inputs=[Input("update-port-btn", "n_clicks")],
-    #     state=[State("port-select-dropdown", "value"),
-    #            State("port-setter-panel", "children"),
-    #            State("hardware-config-store", "data")]
-    # )
-    # def update_port(button_clicks, port_name, port_setter_panel_items, current_hardware_config):
-    #     if button_clicks != None and port_name != None:
-    #         port = FrontendLibrary.lookup_port_by_name(port_name=port_name, configured_ports=configured_ports)
-    #         port = ControllerLibrary.Port()
-    #         for item in port_setter_panel_items:
-    #             if item['props']['id'] == 'port_line':
-    #                 data_line = item['props']['children']
-    #                 data_label = data_line[0]['props']['children']
-    #                 data_value = data_line[1]['props']['children']['props']['value']
-    #                 if data_value != None:
-    #                     setattr(port,data_label,data_value)
-    #                     #port_index = FrontendLibrary.lookup_port_index_in_hardware_configuration(port=port, port_configuration=current_hardware_config['ports'])
-    #         current_hardware_config['ports'][port.name] = port.TextSerialize()
-    #                     # if port_index >= 0:
-    #                     #     current_hardware_config['ports'][port_index] = port.Serialize()
-    #                     # else:
-    #                     #     current_hardware_config['ports'] += [port.Serialize()]
-    #     return current_hardware_config
-    #             #prop_name = prop['props']['children']
-    #         #print('updating')
-    #
-    #         #return {}
-
-#State("hardware-config-store", "data"),
-#State("route-select-dropdown", "value"),
-#Input("add-route-segment-btn", "n_clicks_timestamp")
-#Input("update-route-btn", "n_clicks_timestamp")
-#Output("route-select-dropdown", "value")
     @app.callback(
         inputs=[Input("update-device-btn", "n_clicks_timestamp"),
                 Input("delete-device-btn", "n_clicks_timestamp"),
@@ -826,9 +791,12 @@ def InitializeFrontend(hardware_configuration=None, system_manager=None):
                               update_route_button_click_timestamp: 'update_route'}
         button_clicked = ordered_timestamps[sorted(ordered_timestamps.keys(), reverse=True)[0]]
         hardware_configuration = ControllerLibrary.UnpackHardwareConfiguration(hardware_configuration)
-        if sorted(ordered_timestamps.keys(), reverse=True)[0] == 0:
+        ctx = dash.callback_context
+        button_clicked = ctx.triggered[0]['prop_id'].split('.')[0]
+        #if sorted(ordered_timestamps.keys(), reverse=True)[0] == 0:
+        if ctx.triggered[0]['value'] == 0:
             raise PreventUpdate
-        if button_clicked == 'update_device':
+        if button_clicked == 'update-device-btn':
             #if button_click != None:
             try:
                 device_definition = hardware_configuration['devices'][device_name]
@@ -866,20 +834,27 @@ def InitializeFrontend(hardware_configuration=None, system_manager=None):
                 #  "value": device} for device
                 # in hardware_configuration['devices']]
             #return [hardware_configuration], device_select_dropdown_options, device_definition['name'], FrontendLibrary.build_route_selector_options_list(hardware_configuration), [route_name]
-        elif button_clicked == "delete_device":
-            raise PreventUpdate
-        elif button_clicked == "add_segment":
-            a=5
+        elif button_clicked == "delete-device-btn":
+            #raise PreventUpdate
+            hardware_configuration['devices'].pop(device_name, None)
+            hardware_configuration['routes'].pop(route_name, None)
+            device_name = None
+        elif button_clicked == "add-route-segment-btn":
             hardware_configuration['routes'][route_name] += ['']
             device_select_dropdown_options = FrontendLibrary.build_device_selector_dropdown_options_list(
                 hardware_configuration)
             #device_name = hardware_configuration['name']
             #raise PreventUpdate
+        elif button_clicked == "update-route-btn":
+            #raise PreventUpdate
+            hardware_configuration['routes'][route_name] = [segment['endpoint'] for segment in route_table]
+            device_select_dropdown_options = FrontendLibrary.build_device_selector_dropdown_options_list(
+                hardware_configuration)
         else:
             raise PreventUpdate
 
         return hardware_configuration, \
-               device_select_dropdown_options, \
+               FrontendLibrary.build_device_selector_dropdown_options_list(hardware_configuration), \
                device_name, \
                FrontendLibrary.build_route_selector_options_list(hardware_configuration), \
                route_name
@@ -1108,7 +1083,7 @@ def build_hardware_config_tab(hardware_configuration={}):
                                             n_clicks_timestamp=0),
                                 html.Button("Update Route",
                                             id="update-route-btn",
-                                            className="update-route-btn",
+                                            className="hardware-config-tab-btn",
                                             disabled=False,
                                             n_clicks_timestamp=0),
                                 ]
@@ -1432,12 +1407,12 @@ def build_port_config_line(line_num, port, attribute):
 
 def build_device_config_panel(device_name, hardware_configuration):
     hardware_configuration = ControllerLibrary.UnpackHardwareConfiguration(hardware_configuration)
-    if device_name != 'new_device':
+    if device_name != 'new_device' and device_name != None:
         device_type = hardware_configuration['devices'][device_name]['device_type']
         driver = hardware_configuration['devices'][device_name]['driver']
     else:
-        device_type = ""
-        driver = ""
+        device_type = None
+        driver = None
     # interaction_buttons = [html.Div(
     #     id="button-div",
     #     children=[html.Button("Update Device",
@@ -1448,7 +1423,7 @@ def build_device_config_panel(device_name, hardware_configuration):
     #                           id="delete-device-btn",
     #                           className="hardware-config-tab-btn",
     #                           disabled=False,
-    #                           n_clicks_timestamp=0),
+    #                           n_clicks_timestamp=-0),
     #               ],
     #     ),
     # ]
@@ -1642,30 +1617,87 @@ def build_quick_stats_panel():
             html.Div(
                 id="card-1",
                 children=[
-                    html.P("Operator ID"),
-                    daq.LEDDisplay(
-                        id="operator-led",
-                        value="1704",
-                        color="#92e0d3",
-                        backgroundColor="#1e2130",
-                        size=50,
+                    html.Div(className="double-gauge",
+                        children=[
+                            html.P("Low Side Pressure"),
+                            daq.Gauge(
+                                id="progress-gauge",
+                                max=0,
+                                min=-10,
+                                value=-3,  # default size 200 pixel
+                            ),
+                        ]
+                    ),
+                    html.Div(className="double-gauge",
+                             children=[
+                                 html.P("High Side Pressure"),
+                                 daq.Gauge(
+                                     id="high-side-pressure-gauge",
+                                     max=10,
+                                     min=0,
+                                     value=5,  # default size 200 pixel
+                                 ),
+                             ]
+                    ),
+                    # daq.Gauge(
+                    #     id="progress-gauge",
+                    #     max=max_length * 2,
+                    #     min=0,
+                    #     value=10,  # default size 200 pixel
+                    # ),
+                    # daq.LEDDisplay(
+                    #     id="operator-led",
+                    #     value="1704",
+                    #     color="#92e0d3",
+                    #     backgroundColor="#1e2130",
+                    #     size=50,
+                    # ),
+                ],
+            ),
+            # html.Div(
+            #     id="card-2",
+            #     children=[
+            #         html.P("Time to completion"),
+            #         daq.Gauge(
+            #             id="progress-gauge",
+            #             max=max_length * 2,
+            #             min=0,
+            #             showCurrentValue=True,  # default size 200 pixel
+            #         ),
+            #     ],
+            # ),
+            html.Div(
+                id="card-3",
+                children=[
+                    html.P("System Temperature"),
+                    daq.Thermometer(
+                        id="progress-gauge",
+                        max=max_length * 2,
+                        min=0,
+                        value=88,  # default size 200 pixel
                     ),
                 ],
             ),
             html.Div(
-                id="card-2",
+                id="card-4",
                 children=[
-                    html.P("Time to completion"),
+                    html.P("System pH"),
                     daq.Gauge(
                         id="progress-gauge",
                         max=max_length * 2,
                         min=0,
-                        showCurrentValue=True,  # default size 200 pixel
+                        value=100,  # default size 200 pixel
+                    ),
+                    daq.Gauge(
+                        id="progress-gauge",
+                        max=max_length * 2,
+                        min=0,
+                        value=100,  # default size 200 pixel
                     ),
                 ],
             ),
             html.Div(
-                id="utility-card",
+                id="card-utility",
                 children=[daq.StopButton(id="stop-button", size=160, n_clicks=0)],
             ),
         ],
@@ -1707,15 +1739,15 @@ def build_top_panel(stopped_interval):
                     ),
                 ],
             ),
-            # Piechart
-            html.Div(
-                id="ooc-piechart-outer",
-                className="four columns",
-                children=[
-                    generate_section_banner("% OOC per Parameter"),
-                    generate_piechart(),
-                ],
-            ),
+            # # Piechart
+            # html.Div(
+            #     id="ooc-piechart-outer",
+            #     className="four columns",
+            #     children=[
+            #         generate_section_banner("% OOC per Parameter"),
+            #         generate_piechart(),
+            #     ],
+            # ),
         ],
     )
 
@@ -1995,7 +2027,7 @@ def generate_graph(interval, specs_dict, col):
                 "line": {"color": "#f4d44d"},
             },
             ooc_trace,
-            histo_trace,
+            #histo_trace,
         ]
     }
 
@@ -2015,7 +2047,7 @@ def generate_graph(interval, specs_dict, col):
             "showgrid": False,
             "title": "Batch Number",
             "showline": False,
-            "domain": [0, 0.8],
+            "domain": [0, 1],
             "titlefont": {"color": "darkgray"},
         },
         yaxis={
@@ -2125,19 +2157,19 @@ def generate_graph(interval, specs_dict, col):
                 "line": {"color": "rgb(255,127,80)", "width": 1, "dash": "dot"},
             },
         ],
-        xaxis2={
-            "title": "Count",
-            "domain": [0.8, 1],  # 70 to 100 % of width
-            "titlefont": {"color": "darkgray"},
-            "showgrid": False,
-        },
-        yaxis2={
-            "anchor": "free",
-            "overlaying": "y",
-            "side": "right",
-            "showticklabels": False,
-            "titlefont": {"color": "darkgray"},
-        },
+        # xaxis2={
+        #     "title": "Count",
+        #     "domain": [0.8, 1],  # 70 to 100 % of width
+        #     "titlefont": {"color": "darkgray"},
+        #     "showgrid": False,
+        # },
+        # yaxis2={
+        #     "anchor": "free",
+        #     "overlaying": "y",
+        #     "side": "right",
+        #     "showticklabels": False,
+        #     "titlefont": {"color": "darkgray"},
+        # },
     )
 
     return fig
@@ -2201,7 +2233,7 @@ def SetAppLayout(app=None, hardware_configuration=None):
             build_banner(app),
             dcc.Interval(
                 id="interval-component",
-                interval=2 * 1000,  # in milliseconds
+                interval=3 * 1000,  # in milliseconds
                 n_intervals=50,  # start at batch 50
                 disabled=True,
             ),
