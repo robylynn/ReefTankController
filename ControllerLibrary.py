@@ -71,3 +71,7 @@ def UnpackHardwareConfiguration(hardware_configuration):
         return hardware_configuration[0]
     else:
         return hardware_configuration
+
+
+    # (self.bus.read_i2c_block_data(self.address, downstream_object.bank_address, 2) and not (
+    #             1 << downstream_object.endpoint_pin)) | (data << downstream_object.endpoint_pin)

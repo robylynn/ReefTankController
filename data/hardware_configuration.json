@@ -1,35 +1,31 @@
 {
     "routes": {
         "IO_Multiplexer_1": [
-            "rpi",
-            "HEATER_SSR",
-            "Tfgvhu"
+            "I2C_Multiplexer_1",
+            "rpi"
         ],
         "rpi": [
-            "",
-            "",
-            ""
         ],
-        "Tfgvhu": [
-            ""
+        "MainTankLight1": [
+            "rpi"
         ],
         "I2C_Multiplexer_1": [
             "rpi"
         ],
-        "7": [
-            "rpi"
-        ],
         "HEATER_SSR": [
-            "IO_Multiplexer_1"
+            "IO_Multiplexer_1",
+            "I2C_Multiplexer_1",
+            "rpi"
         ]
     },
     "updates": 4,
     "devices": {
         "IO_Multiplexer_1": {
-            "driver": "abfd",
+            "driver": "SX1509",
             "address": "0x06",
             "device_type": "IO Multiplexer",
-            "name": "IO_Multiplexer_1"
+            "name": "IO_Multiplexer_1",
+            "mux_bus": 0
         },
         "rpi": {
             "driver": "RPi",
@@ -37,21 +33,23 @@
             "device_type": "Main Controller",
             "name": "rpi"
         },
-        "Tfgvhu": {
+        "MainTankLight1": {
             "driver": "zetlight_lancia2",
             "address": "Fhuuy",
             "device_type": "Light Controller",
-            "name": "Tfgvhu"
+            "name": "MainTankLight1"
         },
         "I2C_Multiplexer_1": {
-            "driver": "i2c",
+            "driver": "TCA9548A",
             "device_type": "I2C Multiplexer",
             "input_address": "7",
-            "name": "I2C_Multiplexer_1"
+            "name": "I2C_Multiplexer_1",
+            "address": "0x70",
+            "mux_bus": 0
         },
         "HEATER_SSR": {
-            "signel_type": "DO",
-            "driver": "ab",
+            "signal_type": "output",
+            "driver": "generic_digital",
             "device_type": "SSR",
             "name": "HEATER_SSR"
         }
