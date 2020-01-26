@@ -17,6 +17,9 @@ def Initialize1Wire():
 def set_bit(byte=None, bit=None, value=None):
     return (byte and not (1 << bit)) | (value << bit)
 
+# class HAL(Process):
+#     pass
+
 class MainController():
     def __init__(self, address='127.0.0.1', **kwargs):
         self.address = address
@@ -25,6 +28,9 @@ class MainController():
         #     setattr(self, arg, self._kwargs[arg])
 
 class Device():
+    def __init__(self):
+        pass
+
     def _open_upstream(self, downstream_object=None, transaction_fcn=None, fcn_args=None, data=None):
         try:
             upstream_device = self.route[0]
@@ -57,6 +63,19 @@ class Device():
     def null_read_fcn(self, return_value=0, **kwargs):
         #pass
         return return_value
+
+class Interlock(Device):
+    def __init__(self):
+        pass
+
+    def engage(self):
+        pass
+
+    def disengage(self):
+        pass
+
+class DigitalInterlock(Device):
+    pass
 
 class I2CDevice(Device):
     def __init__(self, bus=None, address=0x70, sample_rate=1, **kwargs):
@@ -95,9 +114,11 @@ class I2CDevice(Device):
         else:
             return 0x0
 
-    def _write_read(self, register_command=0x0, data=0x0, num_bytes=1):
+    def _write_read(self, register=0x0, data=0x0, num_bytes=1):
+        if type(data) != 'list':
+            data = [data]
         if not self.simulate:
-            write_msg = smbus2.i2c_msg.write(self.address, [register_command, data])
+            write_msg = smbus2.i2c_msg.write(self.address, [register] + data)
             read_msg = smbus2.i2c_msg.read(self.address, num_bytes)
             self.bus.i2c_rdwr(write_msg, read_msg)
             return read_msg
@@ -119,26 +140,6 @@ class DIODevice(Device):
         self.sample_rate = sample_rate
         self.__dict__.update(kwargs)
 
-    # def open_upstream(self):
-    #     upstream_device = self.route[0]
-    #     if upstream_device.device_type != 'Main Controller':
-    #         upstream_device.open_upstream()
-
-    # def transact(self, value=None):
-    #     try:
-    #         upstream_device = self.route[0]
-    #         if upstream_device.device_type != 'Main Controller':
-    #             if value is not None:
-    #                 upstream_device.open_upstream(data=value, device_object=self)
-    #             else:
-    #                 upstream_device.open_upstream(device_object=self)
-    #     except IndexError:
-    #         raise Exception
-    #         # if value is not None:
-    #         #     GPIO.write(self.pin, value)
-    #         # else:
-    #         #     GPIO.read(self.pin)
-
     def write(self, value):
         # upstream_device = self.route[0]
         # if upstream_device.device_type != 'Main Controller':
@@ -156,7 +157,7 @@ class DIODevice(Device):
         #self.transact()
         return self._open_upstream(downstream_object=self, transaction_fcn=self.null_read_fcn, fcn_args={})
 
-class AIODevice():
+class AIODevice(Device):
     def __init__(self, pin=0, output=False, scaling_factor=1, **kwargs):
         self.pin = pin
         self.output = output
@@ -164,6 +165,9 @@ class AIODevice():
         self.__dict__.update(kwargs)
 
         self.range = [0, 1]
+
+    def read(self):
+        return self._open_upstream(downstream_object=self, transaction_fcn=self.null_read_fcn, fcn_args={})
 
 class TemperatureSensor(I2CDevice):
     def __init__(self, address=0x0):
@@ -185,31 +189,10 @@ class RPi_driver(MainController):
 class TCA9548A_driver(I2CDevice):
     def __init__(self, bus=0, address=0x70, **kwargs):
         super(TCA9548A_driver, self).__init__(bus=bus, address=address, **kwargs)
-        #self.bus = bus
-        #self.address = address
 
     def open_upstream(self, downstream_object=None, transaction_fcn=None, fcn_args={}, data=None):
         self._open_upstream(downstream_object=downstream_object, transaction_fcn=self.open_mux_bus,
                                       fcn_args={'bus': downstream_object.mux_bus})
-        # try:
-        #     upstream_device = self.route[0]
-        #     if upstream_device.device_type != 'Main Controller':
-        #         upstream_device.open_upstream(downstream_object=downstream_object, transaction_fcn=self.open_mux_bus, fcn_args={'bus': downstream_object.mux_bus})
-        #         self.open_mux_bus(downstream_object.mux_bus)
-        #         #state = (self.bus.read_i2c_block_data(self.address, downstream_object.bank_address, 2) and not(1 << downstream_object.endpoint_pin)) | (data << downstream_object.endpoint_pin)
-        #         # bank_addr = self.find_bank_register_address(register_addresses=self.REGDATA, pin=downstream_object.endpoint_pin)
-        #         # state = set_bit(byte=self._read_register(bank_addr, 1), bit=downstream_object.endpoint_pin, value=data)
-        #         # self._write(register=bank_addr, data=state)
-        #         #self.master_bus.write_i2c_block_data(self.address, downstream_object.bank_address, bin(state))
-        #     else:
-        #         self.open_mux_bus(downstream_object.mux_bus)
-        #         # state = (self.bus.read_i2c_block_data(self.address, downstream_object.bank_address, 2) and not (
-        #         #             1 << downstream_object.endpoint_pin)) | (data << downstream_object.endpoint_pin)
-        #         # self.master_bus.write_i2c_block_data(self.address, downstream_object.bank_address, bin(state))
-        # except IndexError:
-        #     #Should not be possible
-        #     raise Exception
-        # #self.bus.write_i2c_block_data(self.address, 1 << endpoint_bus)
 
     def open_mux_bus(self, bus=0, **kwargs):
         self._write(1 << bus)
@@ -217,8 +200,6 @@ class TCA9548A_driver(I2CDevice):
 class SX1509_driver(I2CDevice):
     def __init__(self, master_bus=0, address=0x3E, **kwargs):
         super(SX1509_driver, self).__init__(bus=master_bus, address=address, **kwargs)
-        #self.bus = bus
-        #self.address = address
         self.REGDATAB = 0x10
         self.REGDATAA = 0x11
         self.REGDATA = (0x10, 0x11)
@@ -240,25 +221,6 @@ class SX1509_driver(I2CDevice):
         else:
             raise Exception
 
-    # def open_upstream(self, downstream_object=None, transaction_fcn=None, data=None):
-    #     try:
-    #         upstream_device = self.route[0]
-    #         if upstream_device.device_type != 'Main Controller':
-    #             upstream_device.open_upstream(self.bus, self.set_IO_point, args={'pin': downstream_object.endpoint_pin, 'value':data})
-    #             #state = (self.bus.read_i2c_block_data(self.address, downstream_object.bank_address, 2) and not(1 << downstream_object.endpoint_pin)) | (data << downstream_object.endpoint_pin)
-    #             # bank_addr = self.find_bank_register_address(register_addresses=self.REGDATA, pin=downstream_object.endpoint_pin)
-    #             # state = set_bit(byte=self._read_register(bank_addr, 1), bit=downstream_object.endpoint_pin, value=data)
-    #             # self._write(register=bank_addr, data=state)
-    #             #self.master_bus.write_i2c_block_data(self.address, downstream_object.bank_address, bin(state))
-    #         else:
-    #             self.set_IO_point(pin=downstream_object.endpoint_pin, value=data)
-    #             # state = (self.bus.read_i2c_block_data(self.address, downstream_object.bank_address, 2) and not (
-    #             #             1 << downstream_object.endpoint_pin)) | (data << downstream_object.endpoint_pin)
-    #             # self.master_bus.write_i2c_block_data(self.address, downstream_object.bank_address, bin(state))
-    #     except IndexError:
-    #         #Should not be possible
-    #         raise Exception
-
     def set_IO_point(self, pin=0, value=0, **kwargs):
         bank_addr = self.find_bank_register_address(register_addresses=self.REGDATA, pin=pin)
         state = set_bit(byte=self._read_register(bank_addr, 1), bit=pin, value=value)
@@ -277,6 +239,52 @@ class SX1509_driver(I2CDevice):
         # if upstream_device.device_type != 'Main Controller':
         #     upstream_device.open_upstream(self.bus)
 
+class ADS1115_driver(I2CDevice):
+    def __init__(self, master_bus=0, address=0x3E, **kwargs):
+        super(ADS1115_driver, self).__init__(bus=master_bus, address=address, **kwargs)
+        #self.REGDATAB = 0x10
+        #self.REGDATAA = 0x11
+        #self.REGDATA = (0x10, 0x11)
+        self.op_status_config = 0
+        self.input_mux_config = 1 << 2
+        self.gain_config = 1 << 1
+        self.op_mode_config = 0
+        self.data_rate_config = (1 << 2) + (1 << 1) + 1
+        self.comparator_mode_config = 0
+        self.comparator_polarity_config = 0
+        self.comparator_latch_config = 0
+        self.comparator_queue_config = (1 << 1) + 1
+        # self.config_word = (self.op_status_config << 15) + (self.input_mux_config << 12) + (self.gain_config << 9) + (
+        #             self.op_mode_config << 8) + (self.data_rate_config << 5) + (self.comparator_mode_config << 4) + (
+        #                                self.comparator_polarity_config << 3) + (self.comparator_latch_config << 2) + (
+        #                                self.comparator_queue_config << 1)
+
+
+    def build_config_word(self):
+        return (self.op_status_config << 15) + (self.input_mux_config << 12) + (self.gain_config << 9) + (
+                    self.op_mode_config << 8) + (self.data_rate_config << 5) + (self.comparator_mode_config << 4) + (
+                                       self.comparator_polarity_config << 3) + (self.comparator_latch_config << 2) + (
+                                       self.comparator_queue_config << 1)
+
+    def configure_device(self):
+        self._open_upstream(downstream_object=self, transaction_fcn=self._configure, fcn_args={})
+
+    def select_single_ended_input_line(self, input_line=0):
+        self.input_mux_config = 0x4 + hex(input_line)
+        self.configure_device()
+
+    def _configure(self):
+        self._write(register=0x1, data=self.build_config_word())
+
+    def open_upstream(self, downstream_object=None, transaction_fcn=None, fcn_args={}, data=None):
+        if transaction_fcn.__func__ == self.null_read_fcn.__func__:
+            self._open_upstream(downstream_object=downstream_object, transaction_fcn=self.read_input_line,
+                                fcn_args={'input_line': downstream_object.pin})
+
+    def read_input_line(self, input_line=0):
+        self.select_single_ended_input_line(input_line)
+        return self._write_read(register=0, num_bytes=2)
+
 class zetlight_lancia2_driver(HTTPDevice):
     def __init__(self, address='192.168.1.1', sample_rate=1, **kwargs):
         super(zetlight_lancia2_driver, self).__init__(address=address, sample_rate=sample_rate, **kwargs)
@@ -291,3 +299,7 @@ class generic_digital_driver(DIODevice):
         # self.output = output
         # self.sample_rate = sample_rate
         # self.__dict__.update(kwargs)
+
+class generic_analog_driver(AIODevice):
+    def __init__(self, pin=0, output=False, scaling_factor=1, sample_rate=1, **kwargs):
+        super(generic_analog_driver, self).__init__(pin=pin, output=output, scaling_factor=scaling_factor, **kwargs)

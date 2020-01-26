@@ -21,6 +21,12 @@ def build_device_selector_dropdown_options_list(hardware_configuration={}):
     return [{"label": 'New Device...', "value": "new_device"}] + [
         {"label": device + ' (' + hardware_configuration['devices'][device]['device_type'] + ')', "value": device} for
         device in hardware_configuration['devices']]
+
+def build_controller_selector_dropdown_options_list(hardware_configuration={}):
+    return [{"label": 'New Controller...', "value": "new_controller"}] + [
+        {"label": controller + ' (' + hardware_configuration['controllers'][controller]['controller_type'] + ')', "value": controller}
+        for
+        controller in hardware_configuration['controllers']]
     # return dcc.Dropdown(id=id,
     #                     options=list({"label": device, "value": device} for device in sorted(list(device_types.keys()))),
     #                     #value=list({"label": value, "value": value}),
@@ -50,12 +56,78 @@ def build_driver_type_selector_dropdown(id="driver-select-dropdown", value=None,
                         value=value,
                         )
 
+def build_controller_type_selector_dropdown(id="controller-type-select-dropdown", value=None):
+    # if device_type != '' and device_type != None:
+    #     supported_drivers = Statics.INSTALLED_DRIVERS[device_type]
+    # else:
+    #     supported_drivers = []
+    return dcc.Dropdown(id=id,
+                        options=list({"label": controller, "value": controller} for controller in Statics.SUPPORTED_CONTROLLERS),
+                        #value=list({"label": value, "value": value}),
+                        value=value,
+                        )
+
+def build_controller_output_type_selector_dropdown(id="controller-output-type-select-dropdown", value=None):
+    # if device_type != '' and device_type != None:
+    #     supported_drivers = Statics.INSTALLED_DRIVERS[device_type]
+    # else:
+    #     supported_drivers = []
+    return dcc.Dropdown(id=id,
+                        options=list({"label": output, "value": output} for output in Statics.SUPPORTED_OUTPUT_CONDITIONERS),
+                        #value=list({"label": value, "value": value}),
+                        value=value,
+                        )
+
+def build_controller_sensor_selector_dropdown(id="controller-sensor-selector-dropdown", value=None, hardware_configuration={}):
+    sensors = []
+    for device in hardware_configuration['devices']:
+        if hardware_configuration['devices'][device]['device_type'] == 'Sensor':
+            sensors += [device]
+
+    return dcc.Dropdown(id=id,
+                        options=list(
+                            {"label": sensor, "value": sensor} for sensor in sensors),
+                        # value=list({"label": value, "value": value}),
+                        value=value,
+                        )
+
+
+def build_controller_actuator_selector_dropdown(id="controller-actuator-selector-dropdown", value=None, hardware_configuration={}):
+    actuators = []
+    for device in hardware_configuration['devices']:
+        if hardware_configuration['devices'][device]['device_type'] != 'sensor':
+            actuators += [device]
+
+    return dcc.Dropdown(id=id,
+                        options=list(
+                            {"label": actuator, "value": actuator} for actuator in actuators),
+                        # value=list({"label": value, "value": value}),
+                        value=value,
+                        )
+
+
+def build_interlock_type_selector_dropdown(id="interlock-type-select-dropdown", value=None, hardware_configuration={}):
+    # if device_type != '' and device_type != None:
+    #     supported_drivers = Statics.INSTALLED_DRIVERS[device_type]
+    # else:
+    #     supported_drivers = []
+    return dcc.Dropdown(id=id,
+                        options=list({"label": output, "value": output} for output in hardware_configuration['devices']),
+                        #value=list({"label": value, "value": value}),
+                        value=value,
+                        )
+
 def build_pin_selector_dropdown(value=None, GPIO_pins=Statics.GPIO_PINS):
     return dcc.Dropdown(id="new-port-select-dropdown",
                         options=list({"label": pin, "value": pin} for pin in GPIO_pins),
                         #value=list({"label": value, "value": value}),
                         value=value
                         )
+
+def build_controller_settings_datatable(hardware_configuration={}, controller_type=None, output_type=None):
+    pass
+
+
 
 # def build_complete_attribute_option_list():
 #     combined_attribute_keys = []

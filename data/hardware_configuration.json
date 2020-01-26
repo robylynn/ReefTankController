@@ -1,15 +1,103 @@
 {
+    "controllers": {
+        "TempController0": {
+            "output_type": "PWM",
+            "controller_settings": {
+                "p_gain": 0,
+                "d_gain": 0,
+                "i_gain": 0,
+                "i_limit": 0,
+                "sample_rate": 1
+            },
+            "controller_type": "PID",
+            "actuator": "HEATER_SSR",
+            "output_settings": {
+                "period": 10
+            },
+            "sensor": "temp_sensor_0",
+            "interlock": "HEATER_INTERLOCK_SSR"
+        }
+    },
+    "devices": {
+        "ADC_1": {
+            "driver": "ADS1115",
+            "name": "ADC_1",
+            "device_type": "ADC",
+            "address": "0x01"
+        },
+        "MainTankLight1": {
+            "driver": "zetlight_lancia2",
+            "name": "MainTankLight1",
+            "device_type": "Light Controller",
+            "address": "Fhuuy"
+        },
+        "I2C_Multiplexer_1": {
+            "driver": "TCA9548A",
+            "mux_bus": 0,
+            "input_address": "7",
+            "name": "I2C_Multiplexer_1",
+            "device_type": "I2C Multiplexer",
+            "address": "0x70"
+        },
+        "rpi": {
+            "driver": "RPi",
+            "name": "rpi",
+            "device_type": "Main Controller",
+            "address": "192.168.1.1"
+        },
+        "HEATER_INTERLOCK_SSR": {
+            "driver": "generic_digital",
+            "name": "HEATER_INTERLOCK_SSR",
+            "device_type": "SSR",
+            "pin": "1",
+            "is_interlock_device": "1"
+        },
+        "temp_sensor_0": {
+            "driver": "generic_analog",
+            "name": "temp_sensor_0",
+            "sensor_type": "temperature",
+            "device_type": "Sensor",
+            "address": ""
+        },
+        "IO_Multiplexer_1": {
+            "driver": "SX1509",
+            "mux_bus": 0,
+            "name": "IO_Multiplexer_1",
+            "device_type": "IO Multiplexer",
+            "address": "0x06"
+        },
+        "HEATER_SSR": {
+            "driver": "generic_digital",
+            "name": "HEATER_SSR",
+            "signal_type": "output",
+            "device_type": "SSR",
+            "is_interlock_device": "0"
+        }
+    },
     "routes": {
-        "IO_Multiplexer_1": [
+        "ADC_1": [
             "I2C_Multiplexer_1",
             "rpi"
-        ],
-        "rpi": [
         ],
         "MainTankLight1": [
             "rpi"
         ],
         "I2C_Multiplexer_1": [
+            "rpi"
+        ],
+        "rpi": [],
+        "HEATER_INTERLOCK_SSR": [
+            "IO_Multiplexer_1",
+            "I2C_Multiplexer_1",
+            "rpi"
+        ],
+        "temp_sensor_0": [
+            "ADC_1",
+            "I2C_Multiplexer_1",
+            "rpi"
+        ],
+        "IO_Multiplexer_1": [
+            "I2C_Multiplexer_1",
             "rpi"
         ],
         "HEATER_SSR": [
@@ -18,40 +106,5 @@
             "rpi"
         ]
     },
-    "updates": 4,
-    "devices": {
-        "IO_Multiplexer_1": {
-            "driver": "SX1509",
-            "address": "0x06",
-            "device_type": "IO Multiplexer",
-            "name": "IO_Multiplexer_1",
-            "mux_bus": 0
-        },
-        "rpi": {
-            "driver": "RPi",
-            "address": "192.168.1.1",
-            "device_type": "Main Controller",
-            "name": "rpi"
-        },
-        "MainTankLight1": {
-            "driver": "zetlight_lancia2",
-            "address": "Fhuuy",
-            "device_type": "Light Controller",
-            "name": "MainTankLight1"
-        },
-        "I2C_Multiplexer_1": {
-            "driver": "TCA9548A",
-            "device_type": "I2C Multiplexer",
-            "input_address": "7",
-            "name": "I2C_Multiplexer_1",
-            "address": "0x70",
-            "mux_bus": 0
-        },
-        "HEATER_SSR": {
-            "signal_type": "output",
-            "driver": "generic_digital",
-            "device_type": "SSR",
-            "name": "HEATER_SSR"
-        }
-    }
+    "updates": 4
 }

@@ -22,7 +22,7 @@ if __name__ == '__main__':
     ProcessSynchronizer.database_connector = SystemManager.DBConnection()
 
     SystemController = Controllers.TankController(ProcessSynchronizer, hardware_configuration)
-    SystemController.start()
+    #SystemController.start()
 
     TankControllerFrontEnd, TankControllerSharedMemory = Dashboard.InitializeFrontend(hardware_configuration=hardware_configuration, system_manager=SystemManager, synchronizer=ProcessSynchronizer)
     TankControllerFrontEnd.run_server(debug=True, port=8080, host='0.0.0.0')

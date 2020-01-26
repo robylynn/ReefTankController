@@ -98,7 +98,7 @@ def InitializeFrontend(hardware_configuration=None, system_manager=None, synchro
             #return build_hardware_config_tab(), stopped_interval
             return build_hardware_config_tab(hardware_configuration), stopped_interval
         if tab_switch == "tab2":
-            return build_tab_1(), stopped_interval
+            return build_controller_settings_tab(hardware_configuration), stopped_interval
         return (
             html.Div(
                 id="status-container",
@@ -327,99 +327,6 @@ def InitializeFrontend(hardware_configuration=None, system_manager=None, synchro
 
         return device_table_data, driver_options, driver
 
-        #pass
-        # # interaction_buttons = [html.Div(
-        # #     id="button-div",
-        # #     children=[html.Button("Update Device",
-        # #                           id="update-device-btn",
-        # #                           className="hardware-config-tab-btn",
-        # #                           n_clicks_timestamp=0),
-        # #               html.Button("Delete Device",
-        # #                           id="delete-device-btn",
-        # #                           className="hardware-config-tab-btn",
-        # #                           disabled=False,
-        # #                           n_clicks_timestamp=0),
-        # #               ],
-        # #     ),
-        # # ]
-        # dropdown_table = [html.Table(id="device-config-table",
-        #     children=[
-        #     html.Tr([html.Td("Device Type", className="halfwidth_cell"), html.Td("Driver", className="halfwidth_cell",style={'width': '50%'})]),
-        #     html.Tr([html.Td(FrontendLibrary.build_device_type_selector_dropdown(id="device-type-selector-dropdown", value=device_name)),
-        #              html.Td(FrontendLibrary.build_driver_type_selector_dropdown(id="driver-selector-dropdown", value=device_name))])
-        #     ],
-        #     style={'width': '100%'}
-        #
-        # )]
-        #
-        # configuration_table = [dt.DataTable(id='device-table',
-        #              columns=[{'name': "Attribute", 'id': "attribute_name"},
-        #                       {'name': "Value", 'id': "attribute_value"}],
-        #              data=[{"attribute_name": "name", "attribute_value": ""}, {"attribute_name": "address", "attribute_value": "0x00"}],
-        #              style_cell={'padding': '5px',
-        #                          'color': 'black',
-        #                          'fontSize': 20, 'font-family': '\'Roboto Slab\', serif'},
-        #              style_header={
-        #                  'backgroundColor': 'gray',
-        #                  'fontWeight': 'bold',
-        #                  'text-align': 'center'
-        #              },
-        #              editable=True,
-        #              # dropdown={
-        #              #     'endpoint': {
-        #              #         'options': [
-        #              #             {'label': 'a', 'value': 'a'},
-        #              #             {'label': 'b', 'value': 'b'}
-        #              #         ]
-        #              #     }
-        #              # },
-        #              style_cell_conditional=[
-        #                  {'if': {'column_id': 'attribute_name'},
-        #                   'width': '30%'}
-        #              ],
-        #              row_deletable=True,
-        #              css=[
-        #                  {"selector": "tr:hover td", "rule": "color: #15A919 !important;"},
-        #                  {"selector": "td", "rule": "border: none !important;"},
-        #                  {
-        #                      "selector": ".dash-cell.focused",
-        #                      "rule": "background-color: #C1C1C1 !important;",
-        #                  },
-        #                  {"selector": "table", "rule": "--accent: #1e2130;"},
-        #                  {"selector": "tr", "rule": "background-color: transparent"},
-        #              ],
-        #              )]
-        #
-        # # headers = [html.Label("Device Type", className="four columns"),
-        # #            html.Label("Driver", className="four columns")]
-        # # dropdowns = [FrontendLibrary.build_device_type_selector_dropdown(value=device_name),
-        # #              FrontendLibrary.build_device_type_selector_dropdown(value=device_name)]
-        # if device_name == "new_device":
-        #     #interaction_buttons[0].children[1].disabled = True
-        #     device_type_selection_line = build_device_config_line(div_id='device-type-selection-line',
-        #                                                           device_name=device_name, device_type="Unknown",
-        #                                                           attribute="device_type",
-        #                                                           input_object_id="device-type-selection-dropdown")
-        #     driver_type_selection_line = build_device_config_line(div_id='driver-type-selection-line',
-        #                                                           device_name=device_name, device_type="Unknown",
-        #                                                           attribute="device_type",
-        #                                                           input_object_id="device-type-selection-dropdown")
-        #
-        #
-        # else:
-        #     try:
-        #         device_type_selection_line = build_device_config_line(div_id='device-type-selection-line',
-        #                                                               device_name=device_name, device_type=hardware_configuration['devices'][device_name]['device_type'],
-        #                                                               attribute="device_type",
-        #                                                               input_object_id="device-type-selection-dropdown",
-        #                                                               input_value=hardware_configuration['devices'][device_name]['device_type'])
-        #     except Exception:
-        #         raise PreventUpdate
-        #
-        # return [dropdown_table + configuration_table]# + [configuration_table]# + [html.Div(id="device-attributes-subpanel")]
-        #     #+ [html.Br()]
-        #     #+ interaction_buttons
-
 
     @app.callback(
         inputs=[Input("route-select-dropdown", "value")],
@@ -450,41 +357,26 @@ def InitializeFrontend(hardware_configuration=None, system_manager=None, synchro
         #options['endpoint']['options']}}
         return data, options
 
+    @app.callback(
+        output=Output("controller-parameters-table", "data"),
+        inputs=[
+            Input("controller-type-selector-dropdown", "value"),
+            Input("controller-output-type-selector-dropdown", "value"),
+            Input("controller-sensor-selector-dropdown", "value"),
+            Input("controller-actuator-selector-dropdown", "value"),
+            Input("interlock-type-selector-dropdown", "value"),
+        ],
+        state=[
+            State("controller-select-dropdown", "value"),
+            State("controller-parameters-table", "data"),
+            State("hardware-config-store", "data")
+        ]
+    )
+    def update_controller_parameters_table(controller_type, output_type, sensor, actuator, interlock_type, selected_controller, table_data, hardware_configuration):
+        if controller_type is None or output_type is None or sensor is None or actuator is None or interlock_type is None:
+            raise PreventUpdate
 
-    # def update_route():
-    #     complete_route = []
-    #     for route_segment_ndx in range(0, len(route_config_panel)):
-    #         panel_line_items = route_config_panel[route_segment_ndx]['props']
-    #         try:
-    #             if "route-segment-line" in panel_line_items['id']:
-    #                 segment_row = panel_line_items['children']
-    #                 route_destination = panel_line_items['children'][2]['props']['value']
-    #                 complete_route += [route_destination]
-    #         except KeyError:
-    #             pass
-    #     print(complete_route)
-    #     # route_segment = route_config_panel[route_segment_ndx]['props']['children']
-
-    # @app.callback(
-    #     output=[Output("device-attributes-subpanel", "children")],
-    #     inputs=[Input("device-type-selection-dropdown", "value")],
-    #     state=[State("device-select-dropdown", "value"),
-    #            State("hardware-config-store", "data")]
-    #)
-    # def build_device_attributes_subpanel(device_type=None, device_name=None, hardware_configuration=None):
-    #     hardware_configuration = ControllerLibrary.UnpackHardwareConfiguration(hardware_configuration)
-    #     if device_type != None:
-    #         return [
-    #             #[build_device_config_line(div_id='device-config-line', device_name=device_name, device_type=device_type, attribute=key, input_object_id=device_type + '.' + key + '.' + ControllerLibrary.HAL.SUPPORTED_DEVICES[device_type][key]) for key in list(ControllerLibrary.HAL.SUPPORTED_DEVICES[device_type].keys())]
-    #             [build_device_config_line(div_id='device-config-line', device_name=device_name, device_type=device_type,
-    #                                       attribute=key, input_value=hardware_configuration['devices'][device_name][key] if device_name != 'new_device' else '', input_object_id=device_type + '.' + key + '.' +
-    #                                                                      ControllerLibrary.HAL.SUPPORTED_DEVICES[
-    #                                                                          device_type][key]) for key in
-    #             list(ControllerLibrary.HAL.SUPPORTED_DEVICES[device_type].keys())]
-    #             #+ [build_device_config_attribute_addition_line("add-device-attribute-line")]
-    #         ]
-    #     else:
-    #         return ([html.Label("Select Device Type...", className="four columns")])
+        return [{"attribute_name": 'abc', "attribute_value": 5}]
 
     @app.callback(
         output=Output("value-setter-view-output", "children"),
@@ -991,12 +883,13 @@ def build_hardware_config_tab(hardware_configuration={}):
     #available_devices = list({"label": device, "value": device} for device in ControllerLibrary.HAL.SUPPORTED_DEVICES)
     hardware_configuration = ControllerLibrary.UnpackHardwareConfiguration(hardware_configuration)
     device_selector_options = FrontendLibrary.build_device_selector_dropdown_options_list(hardware_configuration)
+    controller_selector_options = FrontendLibrary.build_controller_selector_dropdown_options_list(
+        hardware_configuration)
     selected_device = device_selector_options[0]['value']
+    selected_controller = controller_selector_options[0]['value']
     return [
-        # Manually select metrics
         html.Div(
             id="set-hardware-config-intro-container",
-            # className='twelve columns',
             children=[
                 html.P(
                 "Configure Controller Ports, Devices, and Routes"),
@@ -1034,10 +927,6 @@ def build_hardware_config_tab(hardware_configuration={}):
                                      #value=selected_device
                                 ),
                                 html.Br(),
-                                # html.Button("Add Attribute",
-                                #             id="add-device-attribute-btn",
-                                #             className="hardware-config-tab-btn",
-                                #             n_clicks_timestamp=0),
                                 html.Button("Update Device",
                                           id="update-device-btn",
                                           className="hardware-config-tab-btn",
@@ -1088,71 +977,59 @@ def build_hardware_config_tab(hardware_configuration={}):
                                             n_clicks_timestamp=0),
                                 ]
                         ),
-                        # html.Div(
-                        #     id="route-config-menu",
-                        #     children=[
-                        #         html.Div(id="route-config-panel"),
-                        #         # html.Br(),
-                        #         ],
-                        #     ),
+
                         html.Div(id='configuration-table-container',
                                  children=[build_route_config_table(hardware_configuration=hardware_configuration)]
                         )
-                            # dt.DataTable(id='route-table',
-                            #              columns=[{'name': "Route Segment Index", 'id': "segment_index"}, {'name': "Endpoint", 'id': "endpoint", "presentation": "dropdown"}],
-                            #              data=[{"segment_index": 1, "endpoint": ""}, {"segment_index": 1, "endpoint": ""}],
-                            #              style_cell={'padding': '5px',
-                            #                          'color': 'black'},
-                            #              style_header={
-                            #                  'backgroundColor': 'gray',
-                            #                  'fontWeight': 'bold',
-                            #                  'text-align': 'center'
-                            #              },
-                            #              editable=True,
-                            #              dropdown={
-                            #                  'endpoint': {
-                            #                      'options': [
-                            #                          {'label': 'a', 'value': 'a'},
-                            #                          {'label': 'b', 'value': 'b'}
-                            #                      ]
-                            #                  }
-                            #              },
-                            #              row_deletable=True,
-                            #              css=[
-                            #                  {"selector": "tr:hover td", "rule": "color: #15A919 !important;"},
-                            #                  {"selector": "td", "rule": "border: none !important;"},
-                            #                  {
-                            #                      "selector": ".dash-cell.focused",
-                            #                      "rule": "background-color: #C1C1C1 !important;",
-                            #                  },
-                            #                  {"selector": "table", "rule": "--accent: #1e2130;"},
-                            #                  {"selector": "tr", "rule": "background-color: transparent"},
-                            #              ],
-                            #              )
+
 
                         ]
                     ),
-                     # html.Div(id='table-container', children=[
-                     #     dt.DataTable(id='route-table',
-                     #                  columns=[{'name': "col1", 'id': "col1"}, {'name': "col2", 'id': "col2"}],
-                     #                  data=[{"col1": 1, "col2": 2}, {"col1": 1, "col2": 2}],
-                     #                  style_cell={'padding': '5px',
-                     #                              'color': 'black'},
-                     #                  style_header={
-                     #                      'backgroundColor': 'gray',
-                     #                      'fontWeight': 'bold'
-                     #                  },
-                     #                  editable=True
-                     #                  )
-                     # ])
                 ]
             ),
-                                        # input
-                                        # html.Label(input, className="four columns"),
-                                        # html.Div(col3, className="four columns"),
-                                    #className="row",
 
+        html.Div(id="controller-settings-section",
+                 children=[
+                     html.Div(
+                         id="hardware-config-subheading",
+                         children=html.P("Controllers")),
 
+                     html.Div(
+                         id="controllers-menu",
+                         children=[
+                             html.Div(
+                                 id="controller-select-menu",
+                                 children=[
+                                     html.Label(id="controller-select-title", children="Select Controller"),
+                                     html.Br(),
+                                     dcc.Dropdown(
+                                         id="controller-select-dropdown",
+                                         options=controller_selector_options,
+                                         # value=selected_device
+                                     ),
+                                     html.Br(),
+                                     html.Button("Update Controller",
+                                                 id="update-controller-btn",
+                                                 className="hardware-config-tab-btn",
+                                                 n_clicks_timestamp=0),
+                                     html.Button("Delete Controller",
+                                                 id="delete-controller-btn",
+                                                 className="hardware-config-tab-btn",
+                                                 disabled=False,
+                                                 n_clicks_timestamp=0)
+                                 ]),
+                             html.Div(
+                                 id="controller-config-menu",
+                                 children=[
+                                     html.Div(id="controller-config-panel", children=
+                                     build_controller_config_panel(selected_controller, hardware_configuration)[0]),
+                                     # html.Br(),
+                                 ],
+                             ),
+                         ],
+                     ),
+                 ]
+                 ),
 
         html.Div(id='hardware_config_button_clicks', children='update_port:0|add_port:0', style={'display': 'none'}),
         html.Div(id='device-update-signal', children=0, style={'display': 'none'}),
@@ -1160,74 +1037,188 @@ def build_hardware_config_tab(hardware_configuration={}):
         html.Div(id="dummy_output2", children=0, style={'display': 'none'})
     ]
 
-def build_controller_settings_tab():
-    return [
-        # Manually select metrics
-        html.Div(
-            id="controller-settings-intro-container",
-            # className='twelve columns',
-            children=html.P(
-                "Set up devices connected to system."
-            ),
-        ),
-        html.Div(
-            id="port-menu",
-            children=[
-                html.Div(
-                    id="port-name-headers",
-                    #className="two columns",
-                    children=[
-                        html.Label(id="port-name-entry-title", children="Port Name", className="two columns"),
-                        html.Label(id="port-name-entry-title", children="Port Type", className="two columns"),
-                    ],
-                ),
-                html.Br(),
-                html.Div(
-                    id="port-data-entry",
-                    # className='five columns',
-                    children=[
-                        dcc.Input(
-                            id="port{}-name-text".format("0"),
-                            type="text",
-                            placeholder="Port Name",
-                            className="two columns",
-                        ),
-                        dcc.Dropdown(
-                            id="port-select-dropdown",
-                            options=list(
-                                {"label": port, "value": port} for port in ports
-                            ),
-                            value=ports[1],
-                            className="two columns",
-                        )
-                    ],
-                ),
-                html.Br(),
-                html.Div(
-                    id="value-setter-menu",
-                    # className='six columns',
-                    children=[
-                        html.Div(id="value-setter-panel"),
-                        html.Br(),
-                        html.Div(
-                            id="button-div",
-                            children=[
-                                html.Button("Update", id="value-setter-set-btn"),
-                                html.Button(
-                                    "View current setup",
-                                    id="value-setter-view-btn",
-                                    n_clicks=0,
-                                ),
-                            ],
-                        ),
-                        html.Div(
-                            id="value-setter-view-output", className="output-datatable"
-                        ),
-                    ],
-                ),
-            ],
-        ),
-    ]
+# def build_controller_settings_tab(hardware_configuration=None):
+#     # available_devices = list({"label": device, "value": device} for device in ControllerLibrary.HAL.SUPPORTED_DEVICES)
+#     hardware_configuration = ControllerLibrary.UnpackHardwareConfiguration(hardware_configuration)
+#     #device_selector_options = FrontendLibrary.build_device_selector_dropdown_options_list(hardware_configuration)
+#     controller_selector_options = FrontendLibrary.build_controller_selector_dropdown_options_list(hardware_configuration)
+#     #selected_device = device_selector_options[0]['value']
+#     return [
+#         # Manually select metrics
+#         html.Div(
+#             id="set-controller-settings-intro-container",
+#             # className='twelve columns',
+#             children=[
+#                 html.P(
+#                     "IO and Controller Settings"),
+#                 html.Button(
+#                     "Save Hardware Configuration to Disk",
+#                     id="save-hardware-config-btn",
+#                     n_clicks=0,
+#                     className="hardware-config-tab-btn"),
+#                 html.Button(
+#                     "Load Hardware Configuration to Controller",
+#                     id="load-hardware-config-to-controller-btn",
+#                     n_clicks=0,
+#                     className="hardware-config-tab-btn"),
+#             ],
+#         ),
+#
+#         html.Div(id="controller-settings-section",
+#                  children=[
+#                      html.Div(
+#                          id="controller-config-subheading",
+#                          children=html.P("Controllers")),
+#
+#                      # Devices menu
+#                      html.Div(
+#                          id="devices-menu",
+#                          children=[
+#                              html.Div(
+#                                  id="device-select-menu",
+#                                  children=[
+#                                      html.Label(id="controller-select-title", children="Select Controller"),
+#                                      html.Br(),
+#                                      dcc.Dropdown(
+#                                          id="controller-select-dropdown",
+#                                          options=controller_selector_options,
+#                                          # value=selected_device
+#                                      ),
+#                                      html.Br(),
+#                                      html.Button("Update Controller",
+#                                                  id="update-controller-btn",
+#                                                  className="hardware-config-tab-btn",
+#                                                  n_clicks_timestamp=0),
+#                                      html.Button("Delete Controller",
+#                                                  id="delete-controller-btn",
+#                                                  className="hardware-config-tab-btn",
+#                                                  disabled=False,
+#                                                  n_clicks_timestamp=0)
+#                                  ]),
+#                              html.Div(
+#                                  id="device-config-menu",
+#                                  children=[
+#                                      html.Div(id="device-config-panel", children=
+#                                      build_device_config_panel(selected_device, hardware_configuration)[0]),
+#                                      # html.Br(),
+#                                  ],
+#                              ),
+#                          ],
+#                      ),
+#                  ]
+#                  ),
+#
+#         html.Div(id="route-config-section",
+#                  children=[
+#                      html.Div(id="hardware-config-subheading",
+#                               children=html.P("Routing")),
+#                      html.Div(
+#                          id="routing-menu",
+#                          children=[
+#                              html.Div(
+#                                  id="route-select-menu",
+#                                  children=[
+#                                      html.Label(id="route-select-title", children="Select Route"),
+#                                      html.Br(),
+#                                      dcc.Dropdown(
+#                                          id="route-select-dropdown",
+#                                          options=FrontendLibrary.build_route_selector_options_list(
+#                                              hardware_configuration=hardware_configuration)
+#                                      ),
+#                                      html.Br(),
+#                                      html.Button("Add Segment",
+#                                                  id="add-route-segment-btn",
+#                                                  className="hardware-config-tab-btn",
+#                                                  n_clicks_timestamp=0),
+#                                      html.Button("Update Route",
+#                                                  id="update-route-btn",
+#                                                  className="hardware-config-tab-btn",
+#                                                  disabled=False,
+#                                                  n_clicks_timestamp=0),
+#                                  ]
+#                              ),
+#
+#                              html.Div(id='configuration-table-container',
+#                                       children=[build_route_config_table(hardware_configuration=hardware_configuration)]
+#                                       )
+#
+#                          ]
+#                      ),
+#                  ]
+#                  )
+#         ]
+
+        # html.Div(id='hardware_config_button_clicks', children='update_port:0|add_port:0', style={'display': 'none'}),
+        # html.Div(id='device-update-signal', children=0, style={'display': 'none'}),
+        # html.Div(id="dummy_output", children=0, style={'display': 'none'}),
+        # html.Div(id="dummy_output2", children=0, style={'display': 'none'})
+    # return [
+    #     # Manually select metrics
+    #     html.Div(
+    #         id="controller-settings-intro-container",
+    #         # className='twelve columns',
+    #         children=html.P(
+    #             "Set up devices connected to system."
+    #         ),
+    #     ),
+    #     html.Div(
+    #         id="port-menu",
+    #         children=[
+    #             html.Div(
+    #                 id="port-name-headers",
+    #                 #className="two columns",
+    #                 children=[
+    #                     html.Label(id="port-name-entry-title", children="Port Name", className="two columns"),
+    #                     html.Label(id="port-name-entry-title", children="Port Type", className="two columns"),
+    #                 ],
+    #             ),
+    #             html.Br(),
+    #             html.Div(
+    #                 id="port-data-entry",
+    #                 # className='five columns',
+    #                 children=[
+    #                     dcc.Input(
+    #                         id="port{}-name-text".format("0"),
+    #                         type="text",
+    #                         placeholder="Port Name",
+    #                         className="two columns",
+    #                     ),
+    #                     dcc.Dropdown(
+    #                         id="port-select-dropdown",
+    #                         options=list(
+    #                             {"label": port, "value": port} for port in ports
+    #                         ),
+    #                         value=ports[1],
+    #                         className="two columns",
+    #                     )
+    #                 ],
+    #             ),
+    #             html.Br(),
+    #             html.Div(
+    #                 id="value-setter-menu",
+    #                 # className='six columns',
+    #                 children=[
+    #                     html.Div(id="value-setter-panel"),
+    #                     html.Br(),
+    #                     html.Div(
+    #                         id="button-div",
+    #                         children=[
+    #                             html.Button("Update", id="value-setter-set-btn"),
+    #                             html.Button(
+    #                                 "View current setup",
+    #                                 id="value-setter-view-btn",
+    #                                 n_clicks=0,
+    #                             ),
+    #                         ],
+    #                     ),
+    #                     html.Div(
+    #                         id="value-setter-view-output", className="output-datatable"
+    #                     ),
+    #                 ],
+    #             ),
+    #         ],
+    #     ),
+    # ]
 
 # def build_tab_1():
 #     return [
@@ -1413,20 +1404,7 @@ def build_device_config_panel(device_name, hardware_configuration):
     else:
         device_type = None
         driver = None
-    # interaction_buttons = [html.Div(
-    #     id="button-div",
-    #     children=[html.Button("Update Device",
-    #                           id="update-device-btn",
-    #                           className="hardware-config-tab-btn",
-    #                           n_clicks_timestamp=0),
-    #               html.Button("Delete Device",
-    #                           id="delete-device-btn",
-    #                           className="hardware-config-tab-btn",
-    #                           disabled=False,
-    #                           n_clicks_timestamp=-0),
-    #               ],
-    #     ),
-    # ]
+
     dropdown_table = [html.Table(id="device-config-table",
         children=[
         html.Tr([html.Td("Device Type", className="halfwidth_cell"), html.Td("Driver", className="halfwidth_cell",style={'width': '50%'})]),
@@ -1451,14 +1429,6 @@ def build_device_config_panel(device_name, hardware_configuration):
                      'text-align': 'center'
                  },
                  editable=True,
-                 # dropdown={
-                 #     'endpoint': {
-                 #         'options': [
-                 #             {'label': 'a', 'value': 'a'},
-                 #             {'label': 'b', 'value': 'b'}
-                 #         ]
-                 #     }
-                 # },
                  style_cell_conditional=[
                      {'if': {'column_id': 'attribute_name'},
                       'width': '30%'}
@@ -1476,35 +1446,86 @@ def build_device_config_panel(device_name, hardware_configuration):
                  ],
                  )]
 
-    # headers = [html.Label("Device Type", className="four columns"),
-    #            html.Label("Driver", className="four columns")]
-    # dropdowns = [FrontendLibrary.build_device_type_selector_dropdown(value=device_name),
-    #              FrontendLibrary.build_device_type_selector_dropdown(value=device_name)]
-    # if device_name == "new_device":
-    #     #interaction_buttons[0].children[1].disabled = True
-    #     device_type_selection_line = build_device_config_line(div_id='device-type-selection-line',
-    #                                                           device_name=device_name, device_type="Unknown",
-    #                                                           attribute="device_type",
-    #                                                           input_object_id="device-type-selection-dropdown")
-    #     driver_type_selection_line = build_device_config_line(div_id='driver-type-selection-line',
-    #                                                           device_name=device_name, device_type="Unknown",
-    #                                                           attribute="device_type",
-    #                                                           input_object_id="device-type-selection-dropdown")
-    #
-    #
-    # else:
-    #     try:
-    #         device_type_selection_line = build_device_config_line(div_id='device-type-selection-line',
-    #                                                               device_name=device_name, device_type=hardware_configuration['devices'][device_name]['device_type'],
-    #                                                               attribute="device_type",
-    #                                                               input_object_id="device-type-selection-dropdown",
-    #                                                               input_value=hardware_configuration['devices'][device_name]['device_type'])
-    #     except Exception:
-    #         raise PreventUpdate
+    return [dropdown_table + configuration_table]
 
-    return [dropdown_table + configuration_table]# + [configuration_table]# + [html.Div(id="device-attributes-subpanel")]
-        #+ [html.Br()]
-        #+ interaction_buttons
+def build_controller_config_panel(controller_name, hardware_configuration):
+    hardware_configuration = ControllerLibrary.UnpackHardwareConfiguration(hardware_configuration)
+    if controller_name != 'new_controller' and controller_name != None:
+        controller_type = hardware_configuration['controllers'][controller_name]['controller_type']
+        #driver = hardware_configuration['devices'][controller_name]['driver']
+    else:
+        controller_type = None
+        sensor = None
+        actuator = None
+        #driver = None
+
+    dropdown_table = [html.Table(id="controller-config-table",
+        children=[
+        # html.Tr([html.Td("Device Type", className="halfwidth_cell"), html.Td("Driver", className="halfwidth_cell",style={'width': '50%'})]),
+        # html.Tr([html.Td(FrontendLibrary.build_device_type_selector_dropdown(id="device-type-selector-dropdown", value=controller_type)),
+        #          html.Td(FrontendLibrary.build_driver_type_selector_dropdown(id="driver-selector-dropdown", device_type=controller_type, value=driver))]),
+        #html.Tr([html.Td("Controller Type", className="quarterwidth_cell"), html.Td(FrontendLibrary.build_controller_type_selector_dropdown(id="controller-type-selector-dropdown", value=controller_type), className='horizontal-fill-cell',)]),
+        html.Tr([html.Td("Controller Type", className="quarterwidth_cell"), html.Td(
+            FrontendLibrary.build_controller_type_selector_dropdown(id="controller-type-selector-dropdown",
+                                                                    value=controller_type),
+            className='horizontal-fill-cell', )]),
+        html.Tr([html.Td("Output Type", className="quarterwidth_cell"), html.Td(
+            FrontendLibrary.build_controller_output_type_selector_dropdown(id="controller-output-type-selector-dropdown",
+                                                                    value=controller_type),
+                                                                    className='horizontal-fill-cell',)]),
+        html.Tr([html.Td("Sensor", className="quarterwidth_cell"), html.Td(
+            FrontendLibrary.build_controller_sensor_selector_dropdown(
+                id="controller-sensor-selector-dropdown",
+                value=sensor,
+                hardware_configuration=hardware_configuration),
+            className='horizontal-fill-cell', )]),
+        html.Tr([html.Td("Actuator", className="quarterwidth_cell"), html.Td(
+            FrontendLibrary.build_controller_actuator_selector_dropdown(
+                id="controller-actuator-selector-dropdown",
+                value=actuator,
+                hardware_configuration=hardware_configuration),
+            className='horizontal-fill-cell', )]),
+        html.Tr([html.Td("Interlock Device", className="quarterwidth_cell"), html.Td(
+            FrontendLibrary.build_interlock_type_selector_dropdown(id="interlock-type-selector-dropdown",
+                                                                    value=controller_type, hardware_configuration=hardware_configuration),
+            className='horizontal-fill-cell')])
+        ],
+        style={'width': '100%'}
+
+    )]
+
+    configuration_table = [dt.DataTable(id='controller-parameters-table',
+                 columns=[{'name': "Attribute", 'id': "attribute_name"},
+                          {'name': "Value", 'id': "attribute_value"}],
+                 #data=[{"attribute_name": "name", "attribute_value": ""}, {"attribute_name": "address", "attribute_value": "0x00"}],
+                 data = [],
+                 style_cell={#'padding': '5px',
+                             'color': 'black',
+                             'fontSize': 15, 'font-family': '\'Roboto Slab\', serif'},
+                 style_header={
+                     'backgroundColor': 'gray',
+                     'fontWeight': 'bold',
+                     'text-align': 'center'
+                 },
+                 editable=True,
+                 style_cell_conditional=[
+                     {'if': {'column_id': 'attribute_name'},
+                      'width': '30%'}
+                 ],
+                 row_deletable=True,
+                 css=[
+                     {"selector": "tr:hover td", "rule": "color: #15A919 !important;"},
+                     {"selector": "td", "rule": "border: none !important;"},
+                     {
+                         "selector": ".dash-cell.focused",
+                         "rule": "background-color: #C1C1C1 !important;",
+                     },
+                     {"selector": "table", "rule": "--accent: #1e2130;"},
+                     {"selector": "tr", "rule": "background-color: transparent"},
+                 ],
+                 )]
+
+    return [dropdown_table + configuration_table]
 
 def build_route_config_table(route=None, hardware_configuration=None):
     if route != None:

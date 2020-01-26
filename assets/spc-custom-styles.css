@@ -455,7 +455,7 @@ body {
   color: darkgray;
 }
 
-#device-config-panel-header, #route-config-panel-header {
+#device-config-panel-header, #route-config-panel-header, #controller-config-panel-header {
   font-weight: bold;
   color: darkgray;
   line-height: 1;
@@ -487,7 +487,7 @@ body {
   vertical-align: top;
 }
 
-#device-config-panel-header > div {
+#device-config-panel-header > div, controller-config-panel-header > div {
   text-align: right;
 }
 
@@ -522,6 +522,18 @@ body {
 
 .halfwidth_cell {
     width: 50%;
+    align: center;
+    background-color: inherit;
+}
+
+.quarterwidth_cell {
+    width: 25%;
+    align: center;
+    background-color: inherit;
+}
+
+.horizontal-fill-cell {
+    width: 99%;
     align: center;
     background-color: inherit;
 }
@@ -575,11 +587,11 @@ body {
   margin: 4rem 5rem 1rem;
 }
 
-#device-config-section, #route-config-section {
+#device-config-section, #route-config-section, #controller-settings-section {
   padding: 0 0 3rem;
 }
 
-#ports-menu, #devices-menu, #routing-menu {
+#ports-menu, #devices-menu, #routing-menu, #controllers-menu {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
@@ -595,7 +607,7 @@ body {
   flex: 1 1 0;
 }
 
-#device-select-menu {
+#device-select-menu, #controller-select-menu {
   flex: 1 1 0;
 }
 
@@ -610,7 +622,7 @@ body {
   flex-direction: column;
 }
 
-#port-setter-menu, #device-config-menu, #route-config-menu, #configuration-table-container {
+#port-setter-menu, #device-config-menu, #route-config-menu, #configuration-table-container, #controller-config-menu {
   flex: 1 1 30%;
   margin-left: 5rem;
   display: flex;
@@ -805,7 +817,7 @@ body {
     flex-direction: column;
   }
 
-  #ports-menu, #devices-menu, #routing-menu {
+  #ports-menu, #devices-menu, #routing-menu, #controllers-menu {
     margin: 2rem;
     flex-direction: column;
   }
@@ -828,7 +840,7 @@ body {
     margin: 2rem 0rem;
   }
 
-  #devices-menu > div {
+  #devices-menu > div, #controllers-menu > div {
     width: 100%;
     flex: none;
     display: flex;
